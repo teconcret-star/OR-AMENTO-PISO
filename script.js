@@ -60,6 +60,10 @@ const TABLE_EXPORT_SCHEMA_VERSION = 1;
 const PRINT_CLEANUP_RETRY_DELAY_MS = 400;
 const IFRAME_CLEANUP_DELAY_MS = 600;
 const IFRAME_PRINT_FALLBACK_TIMEOUT_MS = 2000;
+// Tall enough to hold any proposal without clipping during off-screen layout measurement.
+const IFRAME_MEASURE_HEIGHT_PX = 3000;
+// A4 usable height with 8 mm top+bottom margins: (297 − 16) mm × 96 dpi ÷ 25.4 ≈ 1063 px.
+const A4_USABLE_HEIGHT_PX = 1063;
 const PRESERVE_USERS_CACHE_WARNING = "Lista de usuários vazia ignorada para preservar a sessão ativa.";
 const DEFAULT_STANDARD_TEXT =
   "Apresentamos nossa proposta comercial para execução do piso industrial conforme dados da obra informados. Os valores contemplam o escopo acordado para a área indicada e permanecem sujeitos à validação final das condições do local antes do início dos serviços.";
@@ -4305,12 +4309,15 @@ async function imprimirSomenteProposta() {
   }
 
   const iframe = document.createElement("iframe");
+  // Position off-screen at A4 usable width so layout is computed correctly for measurement.
+  // A4 content width with 8mm side margins: (210 - 16) mm ≈ 734px at 96 dpi.
   iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
+  iframe.style.left = "-9999px";
+  iframe.style.top = "0";
+  iframe.style.width = "734px";
+  iframe.style.height = `${IFRAME_MEASURE_HEIGHT_PX}px`;
   iframe.style.border = "0";
+  iframe.style.visibility = "hidden";
   document.body.appendChild(iframe);
 
   const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -4369,6 +4376,24 @@ async function imprimirSomenteProposta() {
       image.addEventListener("error", resolve, { once: true });
     }))
   );
+
+  // Auto-scale: if the rendered content is taller than one A4 page, shrink it to fit.
+  // css `zoom` (supported in Chrome/Edge/Safari and Firefox ≥ 126) affects layout, so
+  // page-break logic uses the scaled dimensions — unlike `transform: scale()`, which is
+  // purely visual and does not prevent the content from flowing onto a second page.
+  const contentHeight = iframeDoc.documentElement.scrollHeight;
+  if (contentHeight > A4_USABLE_HEIGHT_PX) {
+    iframeDoc.documentElement.style.zoom = (A4_USABLE_HEIGHT_PX / contentHeight).toFixed(4);
+  }
+
+  // Move iframe to a 0×0 hidden corner before opening the print dialog.
+  iframe.style.left = "";
+  iframe.style.top = "";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.visibility = "";
 
   const printWindow = iframe.contentWindow;
   if (!printWindow) {

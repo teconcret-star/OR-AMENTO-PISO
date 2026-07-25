@@ -1011,15 +1011,17 @@ select {
     max-width: none;
   }
 
-  body.print-proposal #tabPerfil,
   body.print-proposal .resultado-card > h2,
   body.print-proposal .resultado-card > .acoes,
   body.print-proposal .resultado-card > .grid {
     display: none !important;
   }
 
-  body.print-proposal #tabProposta,
   body.print-proposal .tab-panel {
+    display: none !important;
+  }
+
+  body.print-proposal #tabProposta {
     display: block !important;
   }
 

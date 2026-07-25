@@ -1111,6 +1111,11 @@ select {
   body.print-proposal .no-print {
     display: none !important;
   }
+
+  body.print-proposal #secaoEscopo,
+  body.print-proposal #secaoServicosInclusos {
+    display: none !important;
+  }
 }
 
 @media (max-width: 480px) {

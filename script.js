@@ -4360,6 +4360,7 @@ async function imprimirSomenteProposta() {
     .assinatura-box p, .assinatura-box strong { margin: 3px 0 0; }
     .assinatura-linha { height: 1px; background: #111827; margin-bottom: 8px; }
     .no-print { display: none !important; }
+    #secaoEscopo, #secaoServicosInclusos { display: none !important; }
   </style>
 </head>
 <body>${proposta.outerHTML}</body>

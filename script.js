@@ -4448,6 +4448,42 @@ async function salvarPropostaEmPdf() {
 }
 
 /**
+ * Renders the proposal preview element into an A4 jsPDF document.
+ * Returns the jsPDF instance, or null if rendering failed.
+ */
+async function renderPropostaParaPdf(elemento) {
+  const canvas = await window.html2canvas(elemento, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: "#ffffff",
+    logging: false
+  });
+
+  const { jsPDF } = window.jspdf;
+  const imgData = canvas.toDataURL("image/jpeg", 0.92);
+
+  // A4 dimensions and margins in mm.
+  const marginMm = 8;
+  const pageW = 210;
+  const pageH = 297;
+  const contentW = pageW - marginMm * 2;
+  const contentH = pageH - marginMm * 2;
+
+  // Convert pixels to mm (96 dpi → 0.2646 mm/px); scale:2 doubles pixel dimensions.
+  const pxToMm = 0.2646;
+  const imgWMm = (canvas.width / 2) * pxToMm;
+  const imgHMm = (canvas.height / 2) * pxToMm;
+
+  const ratio = Math.min(contentW / imgWMm, contentH / imgHMm);
+  const finalW = imgWMm * ratio;
+  const finalH = imgHMm * ratio;
+
+  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  pdf.addImage(imgData, "JPEG", marginMm, marginMm, finalW, finalH);
+  return pdf;
+}
+
+/**
  * Generates a downloadable PDF on mobile by rendering the proposal preview via
  * html2canvas and encoding it into an A4 page using jsPDF.
  */
@@ -4460,35 +4496,7 @@ async function gerarPdfMobile() {
   showToast("Gerando PDF…");
 
   try {
-    const canvas = await window.html2canvas(proposta, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      logging: false
-    });
-
-    const { jsPDF } = window.jspdf;
-    const imgData = canvas.toDataURL("image/jpeg", 0.92);
-
-    // A4 dimensions and margins in mm.
-    const marginMm = 8;
-    const pageW = 210;
-    const pageH = 297;
-    const contentW = pageW - marginMm * 2;
-    const contentH = pageH - marginMm * 2;
-
-    // Convert pixels to mm (96 dpi → 0.2646 mm/px); scale:2 doubles pixel dimensions.
-    const pxToMm = 0.2646;
-    const imgWMm = (canvas.width / 2) * pxToMm;
-    const imgHMm = (canvas.height / 2) * pxToMm;
-
-    const ratio = Math.min(contentW / imgWMm, contentH / imgHMm);
-    const finalW = imgWMm * ratio;
-    const finalH = imgHMm * ratio;
-
-    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-    pdf.addImage(imgData, "JPEG", marginMm, marginMm, finalW, finalH);
-
+    const pdf = await renderPropostaParaPdf(proposta);
     const titulo = ($("propostaTitulo").value.trim() || "proposta-comercial").replace(/\s+/g, "-");
     pdf.save(`${titulo}.pdf`);
     showToast("PDF gerado com sucesso!");
@@ -4525,31 +4533,7 @@ async function compartilharPdf() {
   showToast("Preparando PDF para compartilhar…");
 
   try {
-    const canvas = await window.html2canvas(proposta, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      logging: false
-    });
-
-    const { jsPDF } = window.jspdf;
-    const imgData = canvas.toDataURL("image/jpeg", 0.92);
-
-    const marginMm = 8;
-    const pageW = 210;
-    const pageH = 297;
-    const contentW = pageW - marginMm * 2;
-    const contentH = pageH - marginMm * 2;
-    const pxToMm = 0.2646;
-    const imgWMm = (canvas.width / 2) * pxToMm;
-    const imgHMm = (canvas.height / 2) * pxToMm;
-    const ratio = Math.min(contentW / imgWMm, contentH / imgHMm);
-    const finalW = imgWMm * ratio;
-    const finalH = imgHMm * ratio;
-
-    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-    pdf.addImage(imgData, "JPEG", marginMm, marginMm, finalW, finalH);
-
+    const pdf = await renderPropostaParaPdf(proposta);
     const titulo = ($("propostaTitulo").value.trim() || "proposta-comercial").replace(/\s+/g, "-");
     const fileName = `${titulo}.pdf`;
     const pdfBlob = pdf.output("blob");

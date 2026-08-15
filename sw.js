@@ -15,9 +15,11 @@ const APP_SHELL = [
 // Instala o SW e faz cache dos arquivos do app shell.
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 // Ativa o SW e remove caches antigos.
@@ -60,9 +62,9 @@ self.addEventListener("fetch", (event) => {
 
   // Para CDN externos (chart.js, jsPDF, html2canvas): network-first com fallback no cache.
   const isCdnAsset =
-    url.hostname.includes("cdn.jsdelivr.net") ||
-    url.hostname.includes("cdnjs.cloudflare.com") ||
-    url.hostname.includes("unpkg.com");
+    url.hostname === "cdn.jsdelivr.net" ||
+    url.hostname === "cdnjs.cloudflare.com" ||
+    url.hostname === "unpkg.com";
 
   if (isCdnAsset) {
     event.respondWith(

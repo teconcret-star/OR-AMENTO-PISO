@@ -1580,8 +1580,8 @@ async function createPasswordCredentials(password) {
 }
 
 async function verifyPassword(user, password) {
-  if (user?.email === OPEN_ACCESS_USER_EMAIL) {
-    return OPEN_ACCESS_MODE;
+  if (user?.email === OPEN_ACCESS_USER_EMAIL && OPEN_ACCESS_MODE) {
+    return true;
   }
   if (user.passwordSalt) {
     const derivedHash = await derivePasswordHash(password, user.passwordSalt, user.passwordIterations || PASSWORD_ITERATIONS);

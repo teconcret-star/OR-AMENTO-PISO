@@ -169,59 +169,21 @@
             <h2>Custos de deslocamento</h2>
 
             <div class="grid">
-              <div class="field full">
-                <h3>Veículo de passeio / equipe</h3>
-                <small class="help-text">Informe a quantidade de viagens conforme a etapa da obra (preparação/montagem, concretagem e acabamento/cortes/PU).</small>
-              </div>
-
-              <div class="field">
-                <label for="consumo">Consumo do veículo de passeio (km/l)</label>
-                <input type="number" id="consumo" min="0" step="0.01" placeholder="0,00" />
-              </div>
-
               <div class="field">
                 <label for="precoCombustivel">Preço do combustível (R$/l)</label>
                 <input type="number" id="precoCombustivel" min="0" step="0.01" placeholder="0,00" />
               </div>
 
-              <div class="field">
-                <label for="pedagio">Pedágio por viagem do veículo de passeio (R$)</label>
-                <input type="number" id="pedagio" min="0" step="0.01" placeholder="0,00" />
-              </div>
-
-              <div class="field">
-                <label for="viagens">Quantidade de viagens do veículo de passeio</label>
-                <input type="number" id="viagens" min="1" step="1" value="1" />
-              </div>
-
-              <div class="field">
-                <label for="quantidadeVeiculos">Quantidade de veículos de passeio</label>
-                <input type="number" id="quantidadeVeiculos" min="1" step="1" value="1" />
-              </div>
-
               <div class="field full">
-                <h3>Caminhão / transporte de maquinário</h3>
-                <small class="help-text">Informe viagens do caminhão apenas nas etapas em que houver transporte de máquinas, como concretagem.</small>
+                <h3>Veículos utilizados</h3>
+                <small class="help-text">Adicione os veículos necessários e informe o tipo, a quantidade, as viagens, o consumo e o pedágio de cada um.</small>
               </div>
 
-              <div class="field">
-                <label for="consumoCaminhao">Consumo do caminhão (km/l)</label>
-                <input type="number" id="consumoCaminhao" min="0" step="0.01" placeholder="0,00" />
-              </div>
-
-              <div class="field">
-                <label for="pedagioCaminhao">Pedágio por viagem do caminhão (R$)</label>
-                <input type="number" id="pedagioCaminhao" min="0" step="0.01" placeholder="0,00" />
-              </div>
-
-              <div class="field">
-                <label for="viagensCaminhao">Quantidade de viagens do caminhão</label>
-                <input type="number" id="viagensCaminhao" min="0" step="1" value="0" />
-              </div>
-
-              <div class="field">
-                <label for="quantidadeCaminhoes">Quantidade de caminhões</label>
-                <input type="number" id="quantidadeCaminhoes" min="0" step="1" value="0" />
+              <div id="deslocamentoVeiculosSection" class="field full">
+                <label>Veículos do deslocamento</label>
+                <input type="hidden" id="deslocamentoVeiculosItems" />
+                <div id="deslocamentoVeiculosList" class="equipamentos-lista"></div>
+                <button type="button" id="btnAdicionarVeiculoDeslocamento" class="btn btn-secondary btn-inline">Adicionar veículo</button>
               </div>
 
               <div class="field">
@@ -499,30 +461,18 @@
                 <input type="text" id="servicoAdicionalDescricao" placeholder="Ex.: Nivelamento e polimento, piso sarrafeado, colocação de malha" />
               </div>
 
-              <input type="hidden" id="equipamentosTipo" value="alugados" />
               <div class="field full">
                 <h3>Equipamentos alugados</h3>
-                <small class="help-text">Preencha apenas quando houver locação; se não houver, deixe os campos abaixo em branco.</small>
+                <small class="help-text">Adicione cada locação com sua descrição e o valor total a ser contabilizado no orçamento.</small>
               </div>
 
               <div id="equipamentosAlugadosSection" class="field full">
-                <label>Equipamentos alugados (diária)</label>
+                <label>Equipamentos alugados</label>
                 <input type="hidden" id="equipamentosAlugadosItems" />
                 <div id="equipamentosAlugadosList" class="equipamentos-lista"></div>
                 <button type="button" id="btnAdicionarEquipamentoAlugado" class="btn btn-secondary btn-inline">Adicionar item</button>
-                <small class="help-text">O valor total de cada item será calculado por diária x quantidade de dias.</small>
                 <label for="equipamentosAlugadosObservacao">Observação sobre equipamentos alugados</label>
                 <textarea id="equipamentosAlugadosObservacao" rows="3" placeholder="Ex.: Valores sujeitos à disponibilidade e reajuste do locador."></textarea>
-              </div>
-
-              <div class="field">
-                <label for="locacaoManualValor">Locação externa manual (R$)</label>
-                <input type="number" id="locacaoManualValor" min="0" step="0.01" placeholder="0,00" />
-              </div>
-
-              <div class="field full">
-                <label for="locacaoManualDescricao">Descrição da locação externa</label>
-                <input type="text" id="locacaoManualDescricao" placeholder="Ex.: Bobcat, caçambas, marteletes, furadeiras ou ferramentas de demolição" />
               </div>
 
               <div class="field">

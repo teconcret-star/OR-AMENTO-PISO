@@ -88,15 +88,11 @@ const PROPOSAL_STATUS_META = {
     className: "proposal-status-perdida"
   }
 };
-const EQUIPAMENTOS_TIPO_PROPRIOS = "proprios";
-const EQUIPAMENTOS_TIPO_ALUGADOS = "alugados";
-const EQUIPAMENTOS_ALUGADOS_OPCOES = [
-  { value: "acabadora_simples", label: "Acabadora simples" },
-  { value: "acabadora_dupla", label: "Acabadora dupla" },
-  { value: "maquina_corte", label: "Máquina de corte" },
-  { value: "maquina_laser", label: "Máquina laser" },
-  { value: "nivel_laser", label: "Nível laser" },
-  { value: "regua_vibratoria", label: "Régua vibratória" }
+const DESLOCAMENTO_VEICULO_OPCOES = [
+  { value: "passeio_equipe", label: "Veículo de passeio / equipe" },
+  { value: "utilitario_van", label: "Utilitário / van" },
+  { value: "caminhonete_apoio", label: "Caminhonete de apoio" },
+  { value: "caminhao_maquinario", label: "Caminhão / transporte de maquinário" }
 ];
 const MACHINE_DATABASE_FIELD_IDS = [
   "paramRendimentoFacas",
@@ -1648,14 +1644,184 @@ function atualizarCampoCuraQuimica({ preserveValueWhenDisabled = false } = {}) {
     : "Disponível apenas quando a cura química for selecionada.";
 }
 
-function getEquipamentosTipo() {
-  return EQUIPAMENTOS_TIPO_ALUGADOS;
+function sanitizeDeslocamentoVeiculoTipo(value) {
+  return DESLOCAMENTO_VEICULO_OPCOES.some((item) => item.value === value)
+    ? value
+    : DESLOCAMENTO_VEICULO_OPCOES[0].value;
 }
 
-function sanitizeEquipamentoAlugadoTipo(value) {
-  return EQUIPAMENTOS_ALUGADOS_OPCOES.some((item) => item.value === value)
-    ? value
-    : EQUIPAMENTOS_ALUGADOS_OPCOES[0].value;
+function parseDeslocamentoVeiculosItems(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) => ({
+      tipo: sanitizeDeslocamentoVeiculoTipo(item?.tipo),
+      quantidade: toPositiveIntegerOrFallback(item?.quantidade, 1),
+      viagens: toPositiveIntegerOrFallback(item?.viagens, 1),
+      consumo: toNumber(item?.consumo),
+      pedagio: toNumber(item?.pedagio)
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function getDeslocamentoVeiculosItemsSnapshot() {
+  return parseDeslocamentoVeiculosItems($("deslocamentoVeiculosItems").value);
+}
+
+function setDeslocamentoVeiculosItemsSnapshot(items) {
+  $("deslocamentoVeiculosItems").value = JSON.stringify(
+    (items || []).map((item) => ({
+      tipo: sanitizeDeslocamentoVeiculoTipo(item?.tipo),
+      quantidade: toPositiveIntegerOrFallback(item?.quantidade, 1),
+      viagens: toPositiveIntegerOrFallback(item?.viagens, 1),
+      consumo: toNumber(item?.consumo),
+      pedagio: toNumber(item?.pedagio)
+    }))
+  );
+}
+
+function buildDeslocamentoVeiculoOptions(selectedValue) {
+  return DESLOCAMENTO_VEICULO_OPCOES
+    .map((item) => `<option value="${escapeHtml(item.value)}"${item.value === selectedValue ? " selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function createDeslocamentoVeiculoItem(item = {}) {
+  const tipo = sanitizeDeslocamentoVeiculoTipo(item.tipo);
+  const quantidade = toPositiveIntegerOrFallback(item.quantidade, 1);
+  const viagens = toPositiveIntegerOrFallback(item.viagens, 1);
+  const consumo = toNumber(item.consumo);
+  const pedagio = toNumber(item.pedagio);
+  const idSuffix = createUniqueId().replaceAll("-", "");
+  const tipoId = `deslocamentoVeiculoTipo_${idSuffix}`;
+  const quantidadeId = `deslocamentoVeiculoQuantidade_${idSuffix}`;
+  const viagensId = `deslocamentoVeiculoViagens_${idSuffix}`;
+  const consumoId = `deslocamentoVeiculoConsumo_${idSuffix}`;
+  const pedagioId = `deslocamentoVeiculoPedagio_${idSuffix}`;
+  const totalId = `deslocamentoVeiculoTotal_${idSuffix}`;
+  const row = document.createElement("div");
+  row.className = "equipamento-item equipamento-item-veiculo";
+  row.innerHTML = `
+    <div class="field">
+      <label for="${tipoId}">Tipo de veículo</label>
+      <select id="${tipoId}" class="deslocamento-veiculo-tipo">
+        ${buildDeslocamentoVeiculoOptions(tipo)}
+      </select>
+    </div>
+    <div class="field">
+      <label for="${quantidadeId}">Quantidade</label>
+      <input id="${quantidadeId}" type="number" class="deslocamento-veiculo-quantidade" min="1" step="1" value="${quantidade}" />
+    </div>
+    <div class="field">
+      <label for="${viagensId}">Viagens</label>
+      <input id="${viagensId}" type="number" class="deslocamento-veiculo-viagens" min="1" step="1" value="${viagens}" />
+    </div>
+    <div class="field">
+      <label for="${consumoId}">Consumo (km/l)</label>
+      <input id="${consumoId}" type="number" class="deslocamento-veiculo-consumo" min="0" step="0.01" placeholder="0.00" />
+    </div>
+    <div class="field">
+      <label for="${pedagioId}">Pedágio/viagem (R$)</label>
+      <input id="${pedagioId}" type="number" class="deslocamento-veiculo-pedagio" min="0" step="0.01" placeholder="0.00" />
+    </div>
+    <div class="field">
+      <label for="${totalId}">Total do veículo</label>
+      <input id="${totalId}" type="text" class="deslocamento-veiculo-total" value="${formatMoney(0)}" readonly />
+    </div>
+    <button type="button" class="btn btn-danger btn-inline" data-action="excluir-veiculo" aria-label="Excluir item de veículo">Excluir</button>
+  `;
+  if (consumo > 0) {
+    row.querySelector(".deslocamento-veiculo-consumo").value = consumo;
+  }
+  if (pedagio > 0) {
+    row.querySelector(".deslocamento-veiculo-pedagio").value = pedagio;
+  }
+  return row;
+}
+
+function readDeslocamentoVeiculosFromUI({ distancia = toNumber($("distancia").value), precoCombustivel = toNumber($("precoCombustivel").value), updateTotals = true } = {}) {
+  const rows = Array.from(document.querySelectorAll("#deslocamentoVeiculosList .equipamento-item"));
+  return rows.map((row) => {
+    const tipo = sanitizeDeslocamentoVeiculoTipo(row.querySelector(".deslocamento-veiculo-tipo")?.value);
+    const quantidade = toPositiveIntegerOrFallback(row.querySelector(".deslocamento-veiculo-quantidade")?.value, 1);
+    const viagens = toPositiveIntegerOrFallback(row.querySelector(".deslocamento-veiculo-viagens")?.value, 1);
+    const consumo = toNumber(row.querySelector(".deslocamento-veiculo-consumo")?.value);
+    const pedagio = toNumber(row.querySelector(".deslocamento-veiculo-pedagio")?.value);
+    const distanciaTotal = distancia * viagens;
+    const custoCombustivel = consumo > 0 ? ((distanciaTotal / consumo) * precoCombustivel) * quantidade : 0;
+    const custoPedagio = pedagio * viagens * quantidade;
+    const totalItem = custoCombustivel + custoPedagio;
+    if (updateTotals) {
+      const totalField = row.querySelector(".deslocamento-veiculo-total");
+      if (totalField) totalField.value = formatMoney(totalItem);
+    }
+    return {
+      tipo,
+      quantidade,
+      viagens,
+      consumo,
+      pedagio,
+      custoCombustivel,
+      custoPedagio,
+      totalItem
+    };
+  });
+}
+
+function renderDeslocamentoVeiculosItems(items = []) {
+  const list = $("deslocamentoVeiculosList");
+  const normalizedItems = (items || []).length
+    ? items
+    : [{ tipo: DESLOCAMENTO_VEICULO_OPCOES[0].value, quantidade: 1, viagens: 1, consumo: 0, pedagio: 0 }];
+
+  list.innerHTML = "";
+  normalizedItems.forEach((item) => {
+    list.appendChild(createDeslocamentoVeiculoItem(item));
+  });
+  setDeslocamentoVeiculosItemsSnapshot(readDeslocamentoVeiculosFromUI({ updateTotals: true }));
+}
+
+function atualizarCampoDeslocamento({ syncFromSnapshot = false } = {}) {
+  const section = $("deslocamentoVeiculosSection");
+  if (!section) return;
+  section.hidden = false;
+  if (syncFromSnapshot || !$("deslocamentoVeiculosList").children.length) {
+    renderDeslocamentoVeiculosItems(getDeslocamentoVeiculosItemsSnapshot());
+  }
+}
+
+function getLegacyDeslocamentoVeiculosItems(snapshot = {}) {
+  const items = [];
+  const quantidadeVeiculos = toPositiveIntegerOrFallback(snapshot.quantidadeVeiculos, 1);
+  const viagens = toPositiveIntegerOrFallback(snapshot.viagens, 1);
+  const consumo = toNumber(snapshot.consumo);
+  const pedagio = toNumber(snapshot.pedagio);
+  if (consumo > 0 || pedagio > 0 || snapshot.quantidadeVeiculos || snapshot.viagens) {
+    items.push({
+      tipo: DESLOCAMENTO_VEICULO_OPCOES[0].value,
+      quantidade: quantidadeVeiculos,
+      viagens,
+      consumo,
+      pedagio
+    });
+  }
+  const quantidadeCaminhoes = toPositiveIntegerOrFallback(snapshot.quantidadeCaminhoes, 0);
+  const viagensCaminhao = toPositiveIntegerOrFallback(snapshot.viagensCaminhao, 0);
+  const consumoCaminhao = toNumber(snapshot.consumoCaminhao);
+  const pedagioCaminhao = toNumber(snapshot.pedagioCaminhao);
+  if (quantidadeCaminhoes > 0 || viagensCaminhao > 0 || consumoCaminhao > 0 || pedagioCaminhao > 0) {
+    items.push({
+      tipo: DESLOCAMENTO_VEICULO_OPCOES[3].value,
+      quantidade: Math.max(1, quantidadeCaminhoes),
+      viagens: Math.max(1, viagensCaminhao),
+      consumo: consumoCaminhao,
+      pedagio: pedagioCaminhao
+    });
+  }
+  return items;
 }
 
 function parseEquipamentosAlugadosItems(raw) {
@@ -1664,8 +1830,8 @@ function parseEquipamentosAlugadosItems(raw) {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed.map((item) => ({
-      tipo: sanitizeEquipamentoAlugadoTipo(item?.tipo),
-      diaria: toNumber(item?.diaria)
+      descricao: String(item?.descricao || "").trim(),
+      valor: toNumber(item?.valor ?? item?.totalItem)
     }));
   } catch {
     return [];
@@ -1679,81 +1845,96 @@ function getEquipamentosAlugadosItemsSnapshot() {
 function setEquipamentosAlugadosItemsSnapshot(items) {
   $("equipamentosAlugadosItems").value = JSON.stringify(
     (items || []).map((item) => ({
-      tipo: sanitizeEquipamentoAlugadoTipo(item?.tipo),
-      diaria: toNumber(item?.diaria)
+      descricao: String(item?.descricao || "").trim(),
+      valor: toNumber(item?.valor ?? item?.totalItem)
     }))
   );
 }
 
-function buildEquipamentosAlugadosOptions(selectedValue) {
-  return EQUIPAMENTOS_ALUGADOS_OPCOES
-    .map((item) => `<option value="${escapeHtml(item.value)}"${item.value === selectedValue ? " selected" : ""}>${escapeHtml(item.label)}</option>`)
-    .join("");
+function getLegacyEquipamentosAlugadosItems(snapshot = {}) {
+  const items = [];
+  const dias = toNumber(snapshot.dias)
+    || toNumber(snapshot.diasPreparacao) + toNumber(snapshot.diasConcretagem) + toNumber(snapshot.diasAcabamento);
+  try {
+    const parsed = JSON.parse(snapshot.equipamentosAlugadosItems || "[]");
+    if (Array.isArray(parsed)) {
+      parsed.forEach((item) => {
+        const label = {
+          acabadora_simples: "Acabadora simples",
+          acabadora_dupla: "Acabadora dupla",
+          maquina_corte: "Máquina de corte",
+          maquina_laser: "Máquina laser",
+          nivel_laser: "Nível laser",
+          regua_vibratoria: "Régua vibratória"
+        }[item?.tipo] || "Equipamento alugado";
+        const diaria = toNumber(item?.diaria);
+        if (diaria > 0 || item?.tipo) {
+          items.push({
+            descricao: label,
+            valor: diaria * (dias > 0 ? dias : 1)
+          });
+        }
+      });
+    }
+  } catch {
+    // Ignora valores legados inválidos.
+  }
+  if (toNumber(snapshot.locacaoManualValor) > 0 || String(snapshot.locacaoManualDescricao || "").trim()) {
+    items.push({
+      descricao: String(snapshot.locacaoManualDescricao || "").trim() || "Locação externa",
+      valor: toNumber(snapshot.locacaoManualValor)
+    });
+  }
+  return items;
 }
 
 function createEquipamentoAlugadoItem(item = {}) {
-  const tipo = sanitizeEquipamentoAlugadoTipo(item.tipo);
-  const diaria = toNumber(item.diaria);
+  const descricao = String(item.descricao || "").trim();
+  const valor = toNumber(item.valor ?? item.totalItem);
   const idSuffix = createUniqueId().replaceAll("-", "");
-  const tipoId = `equipamentoAlugadoTipo_${idSuffix}`;
-  const diariaId = `equipamentoAlugadoDiaria_${idSuffix}`;
-  const totalId = `equipamentoAlugadoTotal_${idSuffix}`;
+  const descricaoId = `equipamentoAlugadoDescricao_${idSuffix}`;
+  const valorId = `equipamentoAlugadoValor_${idSuffix}`;
   const row = document.createElement("div");
-  row.className = "equipamento-item";
+  row.className = "equipamento-item equipamento-item-alugado";
   row.innerHTML = `
     <div class="field">
-      <label for="${tipoId}">Equipamento</label>
-      <select id="${tipoId}" class="equipamento-alugado-tipo">
-        ${buildEquipamentosAlugadosOptions(tipo)}
-      </select>
+      <label for="${descricaoId}">Descrição do item</label>
+      <input id="${descricaoId}" type="text" class="equipamento-alugado-descricao" placeholder="Ex.: Bobcat, acabadora dupla, gerador" />
     </div>
     <div class="field">
-      <label for="${diariaId}">Valor da diária (R$)</label>
-      <input id="${diariaId}" type="number" class="equipamento-alugado-diaria" min="0" step="0.01" placeholder="0.00" />
-    </div>
-    <div class="field">
-      <label for="${totalId}">Total do item</label>
-      <input id="${totalId}" type="text" class="equipamento-alugado-total" value="${formatMoney(0)}" readonly />
+      <label for="${valorId}">Valor a contabilizar (R$)</label>
+      <input id="${valorId}" type="number" class="equipamento-alugado-valor" min="0" step="0.01" placeholder="0.00" />
     </div>
     <button type="button" class="btn btn-danger btn-inline" data-action="excluir-equipamento" aria-label="Excluir item de equipamento alugado">Excluir</button>
   `;
-  if (diaria > 0) {
-    row.querySelector(".equipamento-alugado-diaria").value = diaria;
+  row.querySelector(".equipamento-alugado-descricao").value = descricao;
+  if (valor > 0) {
+    row.querySelector(".equipamento-alugado-valor").value = valor;
   }
   return row;
 }
 
-function readEquipamentosAlugadosFromUI({ dias = getCronogramaDiasTotal(), updateTotals = true } = {}) {
+function readEquipamentosAlugadosFromUI() {
   const rows = Array.from(document.querySelectorAll("#equipamentosAlugadosList .equipamento-item"));
-  return rows.map((row) => {
-    const tipo = sanitizeEquipamentoAlugadoTipo(row.querySelector(".equipamento-alugado-tipo")?.value);
-    const diaria = toNumber(row.querySelector(".equipamento-alugado-diaria")?.value);
-    const totalItem = diaria * dias;
-    if (updateTotals) {
-      const totalField = row.querySelector(".equipamento-alugado-total");
-      if (totalField) totalField.value = formatMoney(totalItem);
-    }
-    return { tipo, diaria, totalItem };
-  });
+  return rows
+    .map((row) => ({
+      descricao: row.querySelector(".equipamento-alugado-descricao")?.value.trim() || "",
+      valor: toNumber(row.querySelector(".equipamento-alugado-valor")?.value),
+      totalItem: toNumber(row.querySelector(".equipamento-alugado-valor")?.value)
+    }))
+    .filter((item) => item.descricao || item.valor > 0);
 }
 
 function renderEquipamentosAlugadosItems(items = []) {
   const list = $("equipamentosAlugadosList");
-  const normalizedItems = (items || [])
-    .map((item) => ({
-      tipo: sanitizeEquipamentoAlugadoTipo(item.tipo),
-      diaria: toNumber(item.diaria)
-    }));
-
   list.innerHTML = "";
-  normalizedItems.forEach((item) => {
+  (items || []).forEach((item) => {
     list.appendChild(createEquipamentoAlugadoItem(item));
   });
-  const itemsFromUI = readEquipamentosAlugadosFromUI({ updateTotals: true });
-  setEquipamentosAlugadosItemsSnapshot(itemsFromUI);
+  setEquipamentosAlugadosItemsSnapshot(readEquipamentosAlugadosFromUI());
 }
 
-function atualizarCampoEquipamentosAlugados({ preserveValuesWhenHidden = true, syncFromSnapshot = false } = {}) {
+function atualizarCampoEquipamentosAlugados({ syncFromSnapshot = false } = {}) {
   const section = $("equipamentosAlugadosSection");
   if (!section) return;
 
@@ -2543,14 +2724,8 @@ function proposalFieldsSnapshot() {
     "endereco",
     "metragem",
     "distancia",
-    "consumo",
+    "deslocamentoVeiculosItems",
     "precoCombustivel",
-    "pedagio",
-    "quantidadeVeiculos",
-    "consumoCaminhao",
-    "pedagioCaminhao",
-    "viagensCaminhao",
-    "quantidadeCaminhoes",
     "gastoLogisticoPessoal",
     "gastoLogisticoMaquinario",
     "paramRendimentoFacas",
@@ -2598,15 +2773,11 @@ function proposalFieldsSnapshot() {
     "pinturaEpoxiM2",
     "servicoAdicionalValor",
     "servicoAdicionalDescricao",
-    "equipamentosTipo",
     "equipamentosAlugadosItems",
     "equipamentosAlugadosObservacao",
-    "locacaoManualValor",
-    "locacaoManualDescricao",
     "outrosCustos",
     "lucro",
     "impostoPercentual",
-    "viagens",
     "propostaTitulo",
     "propostaNumero",
     "propostaValidade",
@@ -2626,18 +2797,42 @@ function proposalFieldsSnapshot() {
   }, {});
 }
 
-function applyProposalSnapshot(snapshot = {}) {
-  if (snapshot.propostaClienteId && $("propostaClienteId")) {
-    $("propostaClienteId").dataset.snapshotValue = snapshot.propostaClienteId;
+function normalizeProposalSnapshotForCurrentForm(snapshot = {}) {
+  const normalized = { ...snapshot };
+  const deslocamentoAtual = parseDeslocamentoVeiculosItems(normalized.deslocamentoVeiculosItems);
+  if (!deslocamentoAtual.length) {
+    const legacyDeslocamento = getLegacyDeslocamentoVeiculosItems(snapshot);
+    if (legacyDeslocamento.length) {
+      normalized.deslocamentoVeiculosItems = JSON.stringify(legacyDeslocamento);
+    }
   }
-  Object.keys(snapshot).forEach((id) => {
-    if ($(id)) $(id).value = snapshot[id];
+
+  const equipamentosAtuais = parseEquipamentosAlugadosItems(normalized.equipamentosAlugadosItems);
+  const possuiEquipamentosAtuais = equipamentosAtuais.some((item) => item.descricao || item.valor > 0);
+  if (!possuiEquipamentosAtuais) {
+    const legacyEquipamentos = getLegacyEquipamentosAlugadosItems(snapshot);
+    if (legacyEquipamentos.length) {
+      normalized.equipamentosAlugadosItems = JSON.stringify(legacyEquipamentos);
+    }
+  }
+
+  return normalized;
+}
+
+function applyProposalSnapshot(snapshot = {}) {
+  const normalizedSnapshot = normalizeProposalSnapshotForCurrentForm(snapshot);
+  if (normalizedSnapshot.propostaClienteId && $("propostaClienteId")) {
+    $("propostaClienteId").dataset.snapshotValue = normalizedSnapshot.propostaClienteId;
+  }
+  Object.keys(normalizedSnapshot).forEach((id) => {
+    if ($(id)) $(id).value = normalizedSnapshot[id];
   });
   populateProposalClientSelect();
+  atualizarCampoDeslocamento({ syncFromSnapshot: true });
   atualizarModoFuncionarios();
   atualizarCampoPisoTela({ preserveValueWhenDisabled: true });
   atualizarCampoCuraQuimica({ preserveValueWhenDisabled: true });
-  atualizarCampoEquipamentosAlugados({ preserveValuesWhenHidden: true, syncFromSnapshot: true });
+  atualizarCampoEquipamentosAlugados({ syncFromSnapshot: true });
   atualizarCampoStatusProposta({ preserveValueWhenHidden: true });
   calcularOrcamento();
 }
@@ -3443,16 +3638,7 @@ function calcularOrcamento() {
   const endereco = $("endereco").value.trim() || "-";
   const metragem = toNumber($("metragem").value);
   const distancia = toNumber($("distancia").value);
-  const consumo = toNumber($("consumo").value);
   const precoCombustivel = toNumber($("precoCombustivel").value);
-  const pedagio = toNumber($("pedagio").value);
-  const viagens = toNumber($("viagens").value);
-  const quantidadeVeiculosDigitada = parseInt($("quantidadeVeiculos").value, 10);
-  const quantidadeVeiculos = quantidadeVeiculosDigitada > 0 ? quantidadeVeiculosDigitada : 1;
-  const consumoCaminhao = toNumber($("consumoCaminhao").value);
-  const pedagioCaminhao = toNumber($("pedagioCaminhao").value);
-  const viagensCaminhao = toNumber($("viagensCaminhao").value);
-  const quantidadeCaminhoes = toPositiveIntegerOrFallback($("quantidadeCaminhoes").value, 0);
   const gastoLogisticoPessoal = toNumber($("gastoLogisticoPessoal").value);
   const gastoLogisticoMaquinario = toNumber($("gastoLogisticoMaquinario").value);
   const valorDia = toNumber($("valorDia").value);
@@ -3481,15 +3667,12 @@ function calcularOrcamento() {
   const funcionariosSelecionados = getCronogramaFuncionariosTotal();
   $("dias").value = formatNumberInputValue(dias);
   $("funcionarios").value = formatNumberInputValue(funcionariosSelecionados);
-  const equipamentosTipo = getEquipamentosTipo();
-  const equipamentosAlugados = equipamentosTipo === EQUIPAMENTOS_TIPO_ALUGADOS
-    ? readEquipamentosAlugadosFromUI({ dias, updateTotals: true })
-    : [];
+  const deslocamentoVeiculos = readDeslocamentoVeiculosFromUI({ distancia, precoCombustivel, updateTotals: true });
+  setDeslocamentoVeiculosItemsSnapshot(deslocamentoVeiculos);
+  const equipamentosAlugados = readEquipamentosAlugadosFromUI();
   setEquipamentosAlugadosItemsSnapshot(equipamentosAlugados);
   const custoEquipamentosAlugados = equipamentosAlugados
     .reduce((total, item) => total + item.totalItem, 0);
-  const locacaoManualValor = toNumber($("locacaoManualValor").value);
-  const locacaoManualDescricao = $("locacaoManualDescricao").value.trim();
   const tipoContratacao = $("tipoContratacao").value;
   const preparoLajeMaoObraM2 = toNumber($("preparoLajeMaoObraM2").value);
   const preparoLajeMaterialM2 = toNumber($("preparoLajeMaterialM2").value);
@@ -3509,21 +3692,13 @@ function calcularOrcamento() {
   const impostoPercentual = toNumber($("impostoPercentual").value);
   const machineDb = readMachineDatabaseFromForm();
 
-  const multiplicadorViagens = viagens > 0 ? viagens : 1;
-  const distanciaTotal = distancia * multiplicadorViagens;
-  const custoCombustivel = consumo > 0 ? ((distanciaTotal / consumo) * precoCombustivel) * quantidadeVeiculos : 0;
-  const custoPedagio = pedagio * multiplicadorViagens * quantidadeVeiculos;
-  const multiplicadorViagensCaminhao = viagensCaminhao;
-  const distanciaTotalCaminhao = distancia * multiplicadorViagensCaminhao;
-  const custoCombustivelCaminhao = consumoCaminhao > 0
-    ? ((distanciaTotalCaminhao / consumoCaminhao) * precoCombustivel) * quantidadeCaminhoes
-    : 0;
-  const custoPedagioCaminhao = pedagioCaminhao * multiplicadorViagensCaminhao * quantidadeCaminhoes;
+  const custoCombustivel = deslocamentoVeiculos
+    .reduce((total, item) => total + item.custoCombustivel, 0);
+  const custoPedagio = deslocamentoVeiculos
+    .reduce((total, item) => total + item.custoPedagio, 0);
   const custoDeslocamento =
     custoCombustivel
     + custoPedagio
-    + custoCombustivelCaminhao
-    + custoPedagioCaminhao
     + gastoLogisticoPessoal
     + gastoLogisticoMaquinario;
   const atividadePersonDays =
@@ -3588,7 +3763,6 @@ function calcularOrcamento() {
     + custoTelaTotal
     + custoEquipamentosAlugados
     + custoCuraQuimica
-    + locacaoManualValor
     + custoAtividadesMateriais
     + outrosCustos;
   const valorLucro = subtotal * (lucroPercentual / 100);
@@ -3622,7 +3796,7 @@ function calcularOrcamento() {
   $("resCombustivelMaquinasLitros").textContent = `${formatNumber(litrosCombustivelMaquinas)} L`;
   $("resCombustivelMaquinas").textContent = formatMoney(custoCombustivelMaquinas);
   $("resEncargos").textContent = formatMoney(encargos);
-  $("resOutros").textContent = formatMoney(outrosCustos + locacaoManualValor + custoAtividadesMateriais);
+  $("resOutros").textContent = formatMoney(outrosCustos + custoAtividadesMateriais);
   $("resEquipamentosAlugados").textContent = formatMoney(custoEquipamentosAlugados);
   $("resCuraQuimica").textContent = formatMoney(custoCuraQuimica);
   $("resSubtotal").textContent = formatMoney(subtotal);
@@ -3961,15 +4135,8 @@ function limparCampos() {
     "endereco",
     "metragem",
     "distancia",
-    "consumo",
+    "deslocamentoVeiculosItems",
     "precoCombustivel",
-    "pedagio",
-    "viagens",
-    "quantidadeVeiculos",
-    "consumoCaminhao",
-    "pedagioCaminhao",
-    "viagensCaminhao",
-    "quantidadeCaminhoes",
     "gastoLogisticoPessoal",
     "gastoLogisticoMaquinario",
     "paramRendimentoFacas",
@@ -4017,11 +4184,8 @@ function limparCampos() {
     "pinturaEpoxiM2",
     "servicoAdicionalValor",
     "servicoAdicionalDescricao",
-    "equipamentosTipo",
     "equipamentosAlugadosItems",
     "equipamentosAlugadosObservacao",
-    "locacaoManualValor",
-    "locacaoManualDescricao",
     "outrosCustos",
     "lucro",
     "impostoPercentual",
@@ -4042,23 +4206,19 @@ function limparCampos() {
     $(id).value = "";
   });
 
-  $("viagens").value = 1;
-  $("quantidadeVeiculos").value = 1;
-  $("viagensCaminhao").value = 0;
-  $("quantidadeCaminhoes").value = 0;
   $("modoFuncionarios").value = WORKER_MODE_MANUAL;
   $("pisoTela").value = "sem_tela";
   $("curaQuimica").value = "sem_cura";
   $("tipoContratacao").value = CONTRACT_TYPE_LABOR;
-  $("equipamentosTipo").value = EQUIPAMENTOS_TIPO_ALUGADOS;
   $("impostoPercentual").value = DEFAULT_IMPOSTO_PERCENTUAL;
   $("propostaStatus").value = PROPOSAL_STATUS_EM_ANDAMENTO;
   $("propostaTextoPadrao").value = DEFAULT_STANDARD_TEXT;
   editingProposalId = "";
+  atualizarCampoDeslocamento({ syncFromSnapshot: true });
   atualizarModoFuncionarios({ preserveManualValue: false });
   atualizarCampoPisoTela({ preserveValueWhenDisabled: false });
   atualizarCampoCuraQuimica({ preserveValueWhenDisabled: false });
-  atualizarCampoEquipamentosAlugados({ preserveValuesWhenHidden: false, syncFromSnapshot: true });
+  atualizarCampoEquipamentosAlugados({ syncFromSnapshot: true });
   atualizarCampoStatusProposta({ preserveValueWhenHidden: false });
   atualizarTextoBotaoProposta();
   if (currentUserId) {
@@ -4807,8 +4967,9 @@ async function atualizarInterfaceAutenticada() {
   renderDashboard();
   atualizarTextoBotaoProposta();
   limparFormularioBancoDadosEstimativas();
+  atualizarCampoDeslocamento({ syncFromSnapshot: true });
   atualizarModoFuncionarios({ preserveManualValue: false });
-  atualizarCampoEquipamentosAlugados({ preserveValuesWhenHidden: true, syncFromSnapshot: true });
+  atualizarCampoEquipamentosAlugados({ syncFromSnapshot: true });
   await carregarRascunhoLocal();
   atualizarCampoPisoTela({ preserveValueWhenDisabled: true });
   atualizarCampoCuraQuimica({ preserveValueWhenDisabled: true });
@@ -4997,10 +5158,33 @@ function bindStaticEvents() {
     salvarRascunhoLocal();
   });
 
-  $("equipamentosTipo").addEventListener("change", () => {
-    atualizarCampoEquipamentosAlugados({ preserveValuesWhenHidden: true, syncFromSnapshot: true });
+  $("btnAdicionarVeiculoDeslocamento").addEventListener("click", () => {
+    const list = $("deslocamentoVeiculosList");
+    const row = createDeslocamentoVeiculoItem();
+    list.appendChild(row);
+    row.querySelector(".deslocamento-veiculo-tipo")?.focus();
     calcularOrcamento();
     salvarRascunhoLocal();
+  });
+
+  $("deslocamentoVeiculosList").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-action='excluir-veiculo']");
+    if (!button) return;
+    const row = button.closest(".equipamento-item");
+    if (!row) return;
+    row.remove();
+    if (!$("deslocamentoVeiculosList").children.length) {
+      renderDeslocamentoVeiculosItems();
+    }
+    calcularOrcamento();
+    salvarRascunhoLocal();
+  });
+
+  ["input", "change"].forEach((eventName) => {
+    $("deslocamentoVeiculosList").addEventListener(eventName, () => {
+      calcularOrcamento();
+      salvarRascunhoLocal();
+    });
   });
 
   $("propostaStatus").addEventListener("change", () => {
@@ -5031,7 +5215,7 @@ function bindStaticEvents() {
     const list = $("equipamentosAlugadosList");
     const row = createEquipamentoAlugadoItem();
     list.appendChild(row);
-    row.querySelector(".equipamento-alugado-tipo")?.focus();
+    row.querySelector(".equipamento-alugado-descricao")?.focus();
     calcularOrcamento();
     salvarRascunhoLocal();
   });
@@ -5084,15 +5268,7 @@ function bindStaticEvents() {
     "cep",
     "endereco",
     "distancia",
-    "consumo",
     "precoCombustivel",
-    "pedagio",
-    "quantidadeVeiculos",
-    "viagens",
-    "consumoCaminhao",
-    "pedagioCaminhao",
-    "viagensCaminhao",
-    "quantidadeCaminhoes",
     "gastoLogisticoPessoal",
     "gastoLogisticoMaquinario",
     "paramRendimentoFacas",
@@ -5137,8 +5313,6 @@ function bindStaticEvents() {
     "servicoAdicionalValor",
     "servicoAdicionalDescricao",
     "equipamentosAlugadosObservacao",
-    "locacaoManualValor",
-    "locacaoManualDescricao",
     "outrosCustos",
     "lucro",
     "impostoPercentual",
@@ -5247,10 +5421,11 @@ async function init() {
     updateAppVisibility();
     await restoreSession();
     atualizarTextoBotaoProposta();
+    atualizarCampoDeslocamento({ syncFromSnapshot: true });
     atualizarModoFuncionarios({ preserveManualValue: false });
     atualizarCampoPisoTela({ preserveValueWhenDisabled: false });
     atualizarCampoCuraQuimica({ preserveValueWhenDisabled: false });
-    atualizarCampoEquipamentosAlugados({ preserveValuesWhenHidden: true, syncFromSnapshot: true });
+    atualizarCampoEquipamentosAlugados({ syncFromSnapshot: true });
     atualizarCampoStatusProposta({ preserveValueWhenHidden: false });
     if (!$("propostaTextoPadrao").value.trim()) {
       $("propostaTextoPadrao").value = DEFAULT_STANDARD_TEXT;

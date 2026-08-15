@@ -22,6 +22,9 @@ const OPEN_ACCESS_MODE = true;
 const OPEN_ACCESS_USER_EMAIL = "acesso.livre";
 const OPEN_ACCESS_USER_NAME = "Acesso Livre";
 const PASSWORD_ITERATIONS = 120000;
+// Firebase credentials are kept here for optional future use.
+// Sync is intentionally disabled at startup (firebaseSyncEnabled = false in init()).
+// All data is stored locally in localStorage — no network connection is required.
 const FIREBASE_CONFIG = {
  apiKey: "AIzaSyDPBCd-rC-Y9L9DIzFOgWZ0G_B_Ydn5RKM",
   authDomain: "orcapiso.firebaseapp.com",
@@ -4432,9 +4435,148 @@ async function salvarPropostaEmPdf() {
   const openedPrintDialog = await imprimirSomenteProposta();
   if (openedPrintDialog) return;
 
+  // Mobile fallback: generate a real PDF file using html2canvas + jsPDF.
+  if (window.html2canvas && window.jspdf) {
+    await gerarPdfMobile();
+    return;
+  }
+
+  // Final fallback: browser print dialog (CSS @media print hides non-proposal content).
   printProposalPendingCleanup = true;
   document.body.classList.add("print-proposal");
   window.print();
+}
+
+/**
+ * Generates a downloadable PDF on mobile by rendering the proposal preview via
+ * html2canvas and encoding it into an A4 page using jsPDF.
+ */
+async function gerarPdfMobile() {
+  const proposta = document.querySelector(".proposta-preview");
+  if (!proposta) return;
+
+  const btn = $("btnSalvarPdf");
+  if (btn) btn.disabled = true;
+  showToast("Gerando PDF…");
+
+  try {
+    const canvas = await window.html2canvas(proposta, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false
+    });
+
+    const { jsPDF } = window.jspdf;
+    const imgData = canvas.toDataURL("image/jpeg", 0.92);
+
+    // A4 dimensions and margins in mm.
+    const marginMm = 8;
+    const pageW = 210;
+    const pageH = 297;
+    const contentW = pageW - marginMm * 2;
+    const contentH = pageH - marginMm * 2;
+
+    // Convert pixels to mm (96 dpi → 0.2646 mm/px); scale:2 doubles pixel dimensions.
+    const pxToMm = 0.2646;
+    const imgWMm = (canvas.width / 2) * pxToMm;
+    const imgHMm = (canvas.height / 2) * pxToMm;
+
+    const ratio = Math.min(contentW / imgWMm, contentH / imgHMm);
+    const finalW = imgWMm * ratio;
+    const finalH = imgHMm * ratio;
+
+    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+    pdf.addImage(imgData, "JPEG", marginMm, marginMm, finalW, finalH);
+
+    const titulo = ($("propostaTitulo").value.trim() || "proposta-comercial").replace(/\s+/g, "-");
+    pdf.save(`${titulo}.pdf`);
+    showToast("PDF gerado com sucesso!");
+  } catch (error) {
+    console.error("Falha ao gerar PDF:", error);
+    showToast("Não foi possível gerar o PDF. Tente novamente.", true);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/**
+ * Shares the proposal as a PDF file using the Web Share API when available
+ * (Android Chrome, iOS Safari 15+). Falls back to download + WhatsApp link.
+ */
+async function compartilharPdf() {
+  const resumo = calcularOrcamento();
+  if (resumo.total <= 0) {
+    showToast("Calcule um orçamento válido antes de compartilhar.", true);
+    return;
+  }
+
+  // If html2canvas/jsPDF are not loaded yet, fall back to WhatsApp text.
+  if (!window.html2canvas || !window.jspdf) {
+    gerarMensagemWhatsApp();
+    return;
+  }
+
+  const proposta = document.querySelector(".proposta-preview");
+  if (!proposta) return;
+
+  const btn = $("btnCompartilharPdf");
+  if (btn) btn.disabled = true;
+  showToast("Preparando PDF para compartilhar…");
+
+  try {
+    const canvas = await window.html2canvas(proposta, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false
+    });
+
+    const { jsPDF } = window.jspdf;
+    const imgData = canvas.toDataURL("image/jpeg", 0.92);
+
+    const marginMm = 8;
+    const pageW = 210;
+    const pageH = 297;
+    const contentW = pageW - marginMm * 2;
+    const contentH = pageH - marginMm * 2;
+    const pxToMm = 0.2646;
+    const imgWMm = (canvas.width / 2) * pxToMm;
+    const imgHMm = (canvas.height / 2) * pxToMm;
+    const ratio = Math.min(contentW / imgWMm, contentH / imgHMm);
+    const finalW = imgWMm * ratio;
+    const finalH = imgHMm * ratio;
+
+    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+    pdf.addImage(imgData, "JPEG", marginMm, marginMm, finalW, finalH);
+
+    const titulo = ($("propostaTitulo").value.trim() || "proposta-comercial").replace(/\s+/g, "-");
+    const fileName = `${titulo}.pdf`;
+    const pdfBlob = pdf.output("blob");
+
+    // Try the Web Share API (files) — works on iOS Safari 15+ and Android Chrome.
+    if (navigator.share && navigator.canShare) {
+      const file = new File([pdfBlob], fileName, { type: "application/pdf" });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: titulo });
+        return;
+      }
+    }
+
+    // Fallback: download the PDF and offer WhatsApp.
+    const url = URL.createObjectURL(pdfBlob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    showToast("PDF salvo. Agora envie o arquivo pelo WhatsApp ou e-mail.");
+  } catch (error) {
+    console.error("Falha ao compartilhar PDF:", error);
+    showToast("Não foi possível compartilhar o PDF. Tente 'Salvar em PDF'.", true);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 function limparEstadoImpressao() {
@@ -4774,7 +4916,12 @@ function bindStaticEvents() {
   });
   $("btnSalvarProposta").addEventListener("click", salvarProposta);
   $("btnSalvarPdf").addEventListener("click", salvarPropostaEmPdf);
+  $("btnCompartilharPdf").addEventListener("click", compartilharPdf);
   $("btnWhatsApp").addEventListener("click", gerarMensagemWhatsApp);
+  $("btnNovaProposta").addEventListener("click", () => {
+    limparCampos();
+    activateTab("tabProposta");
+  });
   $("btnExportarTabelas").addEventListener("click", exportarTabelas);
   $("btnImportarTabelas").addEventListener("click", abrirImportacaoTabelas);
   $("inputImportarTabelas").addEventListener("change", importarTabelas);
@@ -5081,6 +5228,13 @@ function bindStaticEvents() {
   });
 }
 
+function registrarServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker
+    .register("/sw.js")
+    .catch((error) => console.warn("Service Worker: falha ao registrar:", error));
+}
+
 async function init() {
   try {
     bindStaticEvents();
@@ -5106,6 +5260,7 @@ async function init() {
       $("propostaTextoPadrao").value = DEFAULT_STANDARD_TEXT;
     }
     calcularOrcamento();
+    registrarServiceWorker();
   } catch (error) {
     console.error("Falha ao iniciar o sistema:", error);
     updateFirebaseStatus(FIREBASE_STATUS_LOCAL);

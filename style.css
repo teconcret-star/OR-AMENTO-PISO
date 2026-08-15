@@ -759,6 +759,18 @@ select {
   margin-bottom: 8px;
 }
 
+.tab-btn-nova-proposta {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.tab-btn-nova-proposta:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
 .no-print {
   display: block;
 }

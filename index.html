@@ -201,7 +201,7 @@
             <div class="grid">
               <div class="field">
                 <label for="funcionarios">Funcionários necessários</label>
-                <small id="infoFuncionarios" class="help-text">Calculado automaticamente pela soma dos campos de funcionários do cronograma de atividades.</small>
+                <small id="infoFuncionarios" class="help-text">Calculado automaticamente a partir do campo de número de funcionários do cronograma de atividades.</small>
                 <input type="number" id="funcionarios" min="0" step="1" readonly aria-describedby="infoFuncionarios" />
               </div>
 
@@ -213,7 +213,7 @@
 
               <div class="field">
                 <label for="dias">Quantidade de dias</label>
-                <small id="infoDias" class="help-text">Calculado automaticamente pela soma dos dias informados no cronograma de atividades.</small>
+                <small id="infoDias" class="help-text">Calculado automaticamente a partir dos dias de execução informados no cronograma de atividades.</small>
                 <input type="number" id="dias" min="0" step="0.5" placeholder="0" readonly aria-describedby="infoDias" />
               </div>
 
@@ -223,33 +223,13 @@
               </div>
 
               <div class="field">
-                <label for="diasPreparacao">Dias de preparação/montagem</label>
-                <input type="number" id="diasPreparacao" min="0" step="0.5" placeholder="0" />
+                <label for="diasExecucao">Dias de execução</label>
+                <input type="number" id="diasExecucao" min="0" step="0.5" placeholder="0" />
               </div>
 
               <div class="field">
-                <label for="funcionariosPreparacao">Funcionários na preparação/montagem</label>
-                <input type="number" id="funcionariosPreparacao" min="0" step="1" placeholder="0" />
-              </div>
-
-              <div class="field">
-                <label for="diasConcretagem">Dias de concretagem</label>
-                <input type="number" id="diasConcretagem" min="0" step="0.5" placeholder="0" />
-              </div>
-
-              <div class="field">
-                <label for="funcionariosConcretagem">Funcionários na concretagem</label>
-                <input type="number" id="funcionariosConcretagem" min="0" step="1" placeholder="0" />
-              </div>
-
-              <div class="field">
-                <label for="diasAcabamento">Dias de acabamento/cortes/PU</label>
-                <input type="number" id="diasAcabamento" min="0" step="0.5" placeholder="0" />
-              </div>
-
-              <div class="field">
-                <label for="funcionariosAcabamento">Funcionários no acabamento</label>
-                <input type="number" id="funcionariosAcabamento" min="0" step="1" placeholder="0" />
+                <label for="numeroFuncionarios">Número de funcionários</label>
+                <input type="number" id="numeroFuncionarios" min="0" step="1" placeholder="0" />
               </div>
 
               <div class="field">
@@ -642,8 +622,8 @@
                   </div>
 
                   <div class="resultado-item">
-                    <span>Soma de funcionários do cronograma</span>
-                    <small class="help-text">Mostra os funcionários informados em cada etapa e o total correspondente de funcionários-dia.</small>
+                    <span>Funcionários e dias de execução</span>
+                    <small class="help-text">Mostra o número de funcionários e os dias de execução, com o total correspondente de funcionários-dia.</small>
                     <strong id="resFuncionarios">0</strong>
                   </div>
 

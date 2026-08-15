@@ -1584,25 +1584,37 @@ function calcularFuncionariosPorMetragem(metragem) {
 }
 
 function getModoFuncionarios() {
-  return $("modoFuncionarios").value === WORKER_MODE_MANUAL ? WORKER_MODE_MANUAL : WORKER_MODE_AUTO;
+  return WORKER_MODE_MANUAL;
 }
 
-function atualizarModoFuncionarios({ preserveManualValue = true } = {}) {
-  const modo = getModoFuncionarios();
+function formatNumberInputValue(value) {
+  if (!Number.isFinite(value) || value <= 0) return "";
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
+}
+
+function getCronogramaDiasTotal() {
+  return toNumber($("diasPreparacao").value)
+    + toNumber($("diasConcretagem").value)
+    + toNumber($("diasAcabamento").value);
+}
+
+function getCronogramaFuncionariosTotal() {
+  return toPositiveIntegerOrFallback($("funcionariosPreparacao").value, 0)
+    + toPositiveIntegerOrFallback($("funcionariosConcretagem").value, 0)
+    + toPositiveIntegerOrFallback($("funcionariosAcabamento").value, 0);
+}
+
+function atualizarModoFuncionarios() {
   const funcionariosEl = $("funcionarios");
-  const funcionariosAutomaticos = calcularFuncionariosPorMetragem(toNumber($("metragem").value));
+  const diasEl = $("dias");
 
-  funcionariosEl.readOnly = modo !== WORKER_MODE_MANUAL;
-
-  if (modo === WORKER_MODE_MANUAL) {
-    $("infoFuncionarios").textContent = "Modo manual: informe a quantidade desejada para esta obra.";
-
-    if (!preserveManualValue || !funcionariosEl.value) {
-      funcionariosEl.value = funcionariosAutomaticos;
-    }
-  } else {
-    $("infoFuncionarios").textContent = "Regra automática: 1 funcionário a cada 100 m²";
-    funcionariosEl.value = funcionariosAutomaticos;
+  funcionariosEl.readOnly = true;
+  diasEl.readOnly = true;
+  funcionariosEl.value = formatNumberInputValue(getCronogramaFuncionariosTotal());
+  diasEl.value = formatNumberInputValue(getCronogramaDiasTotal());
+  $("infoFuncionarios").textContent = "Calculado automaticamente pela soma dos campos de funcionários do cronograma de atividades.";
+  if ($("infoDias")) {
+    $("infoDias").textContent = "Calculado automaticamente pela soma dos dias informados no cronograma de atividades.";
   }
 }
 
@@ -1637,9 +1649,7 @@ function atualizarCampoCuraQuimica({ preserveValueWhenDisabled = false } = {}) {
 }
 
 function getEquipamentosTipo() {
-  return $("equipamentosTipo").value === EQUIPAMENTOS_TIPO_ALUGADOS
-    ? EQUIPAMENTOS_TIPO_ALUGADOS
-    : EQUIPAMENTOS_TIPO_PROPRIOS;
+  return EQUIPAMENTOS_TIPO_ALUGADOS;
 }
 
 function sanitizeEquipamentoAlugadoTipo(value) {
@@ -1713,7 +1723,7 @@ function createEquipamentoAlugadoItem(item = {}) {
   return row;
 }
 
-function readEquipamentosAlugadosFromUI({ dias = toNumber($("dias").value), updateTotals = true } = {}) {
+function readEquipamentosAlugadosFromUI({ dias = getCronogramaDiasTotal(), updateTotals = true } = {}) {
   const rows = Array.from(document.querySelectorAll("#equipamentosAlugadosList .equipamento-item"));
   return rows.map((row) => {
     const tipo = sanitizeEquipamentoAlugadoTipo(row.querySelector(".equipamento-alugado-tipo")?.value);
@@ -1745,18 +1755,12 @@ function renderEquipamentosAlugadosItems(items = []) {
 
 function atualizarCampoEquipamentosAlugados({ preserveValuesWhenHidden = true, syncFromSnapshot = false } = {}) {
   const section = $("equipamentosAlugadosSection");
-  const alugados = getEquipamentosTipo() === EQUIPAMENTOS_TIPO_ALUGADOS;
   if (!section) return;
 
-  section.hidden = !alugados;
+  section.hidden = false;
 
-  if (alugados && (syncFromSnapshot || !$("equipamentosAlugadosList").children.length)) {
+  if (syncFromSnapshot || !$("equipamentosAlugadosList").children.length) {
     renderEquipamentosAlugadosItems(getEquipamentosAlugadosItemsSnapshot());
-  }
-
-  if (!alugados && !preserveValuesWhenHidden) {
-    renderEquipamentosAlugadosItems([]);
-    $("equipamentosAlugadosObservacao").value = "";
   }
 }
 
@@ -3452,7 +3456,6 @@ function calcularOrcamento() {
   const gastoLogisticoPessoal = toNumber($("gastoLogisticoPessoal").value);
   const gastoLogisticoMaquinario = toNumber($("gastoLogisticoMaquinario").value);
   const valorDia = toNumber($("valorDia").value);
-  const dias = toNumber($("dias").value);
   const diasPreparacao = toNumber($("diasPreparacao").value);
   const funcionariosPreparacao = toPositiveIntegerOrFallback($("funcionariosPreparacao").value, 0);
   const diasConcretagem = toNumber($("diasConcretagem").value);
@@ -3474,6 +3477,10 @@ function calcularOrcamento() {
   const comCuraQuimica = curaQuimicaTipo !== "sem_cura";
   const valorCuraM2 = comCuraQuimica ? toNumber($("valorCuraM2").value) : 0;
   const custoCuraQuimica = metragem > 0 ? valorCuraM2 * metragem : 0;
+  const dias = diasPreparacao + diasConcretagem + diasAcabamento;
+  const funcionariosSelecionados = funcionariosPreparacao + funcionariosConcretagem + funcionariosAcabamento;
+  $("dias").value = formatNumberInputValue(dias);
+  $("funcionarios").value = formatNumberInputValue(funcionariosSelecionados);
   const equipamentosTipo = getEquipamentosTipo();
   const equipamentosAlugados = equipamentosTipo === EQUIPAMENTOS_TIPO_ALUGADOS
     ? readEquipamentosAlugadosFromUI({ dias, updateTotals: true })
@@ -3501,18 +3508,6 @@ function calcularOrcamento() {
   const lucroPercentual = toNumber($("lucro").value);
   const impostoPercentual = toNumber($("impostoPercentual").value);
   const machineDb = readMachineDatabaseFromForm();
-  const funcionariosAutomaticos = calcularFuncionariosPorMetragem(metragem);
-  const modoFuncionarios = getModoFuncionarios();
-  const funcionariosSelecionados =
-    modoFuncionarios === WORKER_MODE_MANUAL
-      ? Math.max(0, Math.round(toNumber($("funcionarios").value)))
-      : funcionariosAutomaticos;
-
-  if (modoFuncionarios === WORKER_MODE_AUTO) {
-    $("funcionarios").value = funcionariosAutomaticos;
-  } else {
-    $("funcionarios").value = funcionariosSelecionados;
-  }
 
   const multiplicadorViagens = viagens > 0 ? viagens : 1;
   const distanciaTotal = distancia * multiplicadorViagens;
@@ -3535,11 +3530,7 @@ function calcularOrcamento() {
     (funcionariosPreparacao * diasPreparacao)
     + (funcionariosConcretagem * diasConcretagem)
     + (funcionariosAcabamento * diasAcabamento);
-  const usaCronogramaAtividades = atividadePersonDays > 0;
-  const funcionariosPico = usaCronogramaAtividades
-    ? Math.max(funcionariosPreparacao, funcionariosConcretagem, funcionariosAcabamento)
-    : funcionariosSelecionados;
-  const funcionarioDias = usaCronogramaAtividades ? atividadePersonDays : funcionariosSelecionados * dias;
+  const funcionarioDias = atividadePersonDays;
   const diaristaDias = quantidadeDiaristas * dias;
   const totalPessoaDias = funcionarioDias + diaristaDias;
   const custoMaoDeObraFuncionarios = funcionarioDias * valorDia;
@@ -3621,9 +3612,7 @@ function calcularOrcamento() {
   $("resPedagio").textContent = formatMoney(custoPedagio);
   $("resDeslocamento").textContent = formatMoney(custoDeslocamento);
   $("resMaoDeObra").textContent = formatMoney(custoMaoDeObra);
-  $("resFuncionarios").textContent = usaCronogramaAtividades
-    ? `${funcionariosPico} (pico) / ${formatNumber(funcionarioDias)} ${pluralize(funcionarioDias, "funcionário-dia", "funcionários-dia")}`
-    : String(funcionariosSelecionados);
+  $("resFuncionarios").textContent = String(funcionariosSelecionados);
   $("resAlimentacao").textContent = formatMoney(custoAlimentacao);
   $("resHotel").textContent = formatMoney(custoHotel);
   $("resFacasQtd").textContent = formatConsumableSetsAndItems(jogosFacasEstimados, facasEstimadas, "faca", "facas");
@@ -3651,6 +3640,7 @@ function calcularOrcamento() {
   $("prevVendedorNome").textContent = profile.nomeVendedor || currentUser?.name || "-";
   $("prevTipoContratacao").textContent = getTipoContratacaoLabel(tipoContratacao);
   const servicosComplementaresCliente = [
+    { label: "Terraplanagem", total: terraplanagemTotal },
     { label: "Colocação de armação/tela", total: custoTelaTotal },
     { label: "Fornecimento e aplicação de cura química", total: custoCuraQuimica },
     { label: "Preparação de laje (chaveamento)", total: custoPreparoLaje },
@@ -3685,7 +3675,7 @@ function calcularOrcamento() {
     metragem,
     total,
     valorM2,
-    funcionariosPico
+    funcionariosConsiderados: funcionariosSelecionados
   };
 }
 
@@ -4056,11 +4046,11 @@ function limparCampos() {
   $("quantidadeVeiculos").value = 1;
   $("viagensCaminhao").value = 0;
   $("quantidadeCaminhoes").value = 0;
-  $("modoFuncionarios").value = WORKER_MODE_AUTO;
+  $("modoFuncionarios").value = WORKER_MODE_MANUAL;
   $("pisoTela").value = "sem_tela";
   $("curaQuimica").value = "sem_cura";
   $("tipoContratacao").value = CONTRACT_TYPE_LABOR;
-  $("equipamentosTipo").value = EQUIPAMENTOS_TIPO_PROPRIOS;
+  $("equipamentosTipo").value = EQUIPAMENTOS_TIPO_ALUGADOS;
   $("impostoPercentual").value = DEFAULT_IMPOSTO_PERCENTUAL;
   $("propostaStatus").value = PROPOSAL_STATUS_EM_ANDAMENTO;
   $("propostaTextoPadrao").value = DEFAULT_STANDARD_TEXT;

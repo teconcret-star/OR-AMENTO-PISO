@@ -3,13 +3,13 @@
  * Isso garante funcionamento 100% offline após o primeiro acesso.
  */
 
-const CACHE_NAME = "orcapiso-v1";
+const CACHE_NAME = "orcapiso-v2";
 const APP_SHELL = [
-  "/",
-  "/index.html",
-  "/style.css",
-  "/script.js",
-  "/manifest.json"
+  "./",
+  "./index.html",
+  "./style.css",
+  "./script.js",
+  "./manifest.json"
 ];
 
 // Instala o SW e faz cache dos arquivos do app shell.

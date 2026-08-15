@@ -2241,7 +2241,9 @@ async function importarTabelas(event) {
     if (normalized.proposals) saveProposals(normalized.proposals);
     if (normalized.clients) saveClients(normalized.clients);
     if (normalized.machineDatabase) saveMachineDatabase(normalized.machineDatabase);
-    await ensureAdminExists();
+    if (!OPEN_ACCESS_MODE) {
+      await ensureAdminExists();
+    }
 
     const currentUserInImportedData = getUsers().find((item) => item.id === currentUserId && item.active);
     if (!currentUserInImportedData) {
@@ -2583,7 +2585,9 @@ async function ensureOpenAccessUser() {
     role: ROLE_ADMIN,
     filial: DEFAULT_FILIAL,
     active: true,
-    ...(await createPasswordCredentials(generateOpenAccessPassword())),
+    passwordHash: "open-access",
+    passwordSalt: "",
+    passwordIterations: PASSWORD_ITERATIONS,
     mustChangePassword: false,
     profile: buildDefaultProfile({
       name: OPEN_ACCESS_USER_NAME,
@@ -5473,7 +5477,7 @@ function bindStaticEvents() {
 function registrarServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   navigator.serviceWorker
-    .register("/sw.js")
+    .register("sw.js")
     .catch((error) => console.warn("Service Worker: falha ao registrar:", error));
 }
 
@@ -5488,7 +5492,9 @@ async function init() {
     pendingSyncQueue.clear();
     removeLegacyStorageItem(PENDING_SYNC_STORAGE_KEY);
     updateFirebaseStatus(FIREBASE_STATUS_LOCAL);
-    await ensureAdminExists();
+    if (!OPEN_ACCESS_MODE) {
+      await ensureAdminExists();
+    }
     limparFormularioBancoDadosEstimativas();
     applyMachineDatabaseToForm();
     applyGlobalConfigToForm();

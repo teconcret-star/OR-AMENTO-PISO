@@ -4452,12 +4452,21 @@ async function salvarPropostaEmPdf() {
  * Returns the jsPDF instance, or null if rendering failed.
  */
 async function renderPropostaParaPdf(elemento) {
-  const canvas = await window.html2canvas(elemento, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: "#ffffff",
-    logging: false
-  });
+  // Temporarily hide elements that should not appear in the PDF (e.g. "Resumo interno do cálculo").
+  const noPrintEls = Array.from(elemento.querySelectorAll(".no-print"));
+  noPrintEls.forEach((el) => { el.dataset.pdfPrevDisplay = el.style.display; el.style.display = "none"; });
+
+  let canvas;
+  try {
+    canvas = await window.html2canvas(elemento, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false
+    });
+  } finally {
+    noPrintEls.forEach((el) => { el.style.display = el.dataset.pdfPrevDisplay; delete el.dataset.pdfPrevDisplay; });
+  }
 
   const { jsPDF } = window.jspdf;
   const imgData = canvas.toDataURL("image/jpeg", 0.92);

@@ -22,6 +22,7 @@ const DEFAULT_ADMIN_PASSWORD = "password2026";
 const OPEN_ACCESS_MODE = true;
 const OPEN_ACCESS_USER_EMAIL = "acesso.livre";
 const OPEN_ACCESS_USER_NAME = "Acesso Livre";
+const OPEN_ACCESS_PASSWORD_SENTINEL = "__open_access_no_password__";
 const PASSWORD_ITERATIONS = 120000;
 // Firebase credentials are kept here for optional future use.
 // Sync is intentionally disabled at startup (firebaseSyncEnabled = false in init()).
@@ -1579,6 +1580,9 @@ async function createPasswordCredentials(password) {
 }
 
 async function verifyPassword(user, password) {
+  if (user?.email === OPEN_ACCESS_USER_EMAIL) {
+    return OPEN_ACCESS_MODE;
+  }
   if (user.passwordSalt) {
     const derivedHash = await derivePasswordHash(password, user.passwordSalt, user.passwordIterations || PASSWORD_ITERATIONS);
     return derivedHash === user.passwordHash;
@@ -2585,7 +2589,7 @@ async function ensureOpenAccessUser() {
     role: ROLE_ADMIN,
     filial: DEFAULT_FILIAL,
     active: true,
-    passwordHash: `open_access_${createUniqueId()}`,
+    passwordHash: OPEN_ACCESS_PASSWORD_SENTINEL,
     passwordSalt: "",
     passwordIterations: PASSWORD_ITERATIONS,
     mustChangePassword: false,

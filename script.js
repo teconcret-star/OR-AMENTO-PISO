@@ -2572,6 +2572,9 @@ async function ensureOpenAccessUser() {
       role: ROLE_ADMIN,
       filial: DEFAULT_FILIAL,
       active: true,
+      passwordHash: null,
+      passwordSalt: null,
+      passwordIterations: 0,
       mustChangePassword: false,
       updatedAt: Date.now()
     };
@@ -2588,6 +2591,9 @@ async function ensureOpenAccessUser() {
     role: ROLE_ADMIN,
     filial: DEFAULT_FILIAL,
     active: true,
+    passwordHash: null,
+    passwordSalt: null,
+    passwordIterations: 0,
     mustChangePassword: false,
     profile: buildDefaultProfile({
       name: OPEN_ACCESS_USER_NAME,

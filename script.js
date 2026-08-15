@@ -1799,7 +1799,8 @@ function getLegacyDeslocamentoVeiculosItems(snapshot = {}) {
   const viagens = toPositiveIntegerOrFallback(snapshot.viagens, 1);
   const consumo = toNumber(snapshot.consumo);
   const pedagio = toNumber(snapshot.pedagio);
-  if (consumo > 0 || pedagio > 0 || snapshot.quantidadeVeiculos || snapshot.viagens) {
+  const possuiDadosPasseio = consumo > 0 || pedagio > 0 || quantidadeVeiculos > 1 || viagens > 1;
+  if (possuiDadosPasseio) {
     items.push({
       tipo: DESLOCAMENTO_VEICULO_OPCOES[0].value,
       quantidade: quantidadeVeiculos,
@@ -1853,8 +1854,11 @@ function setEquipamentosAlugadosItemsSnapshot(items) {
 
 function getLegacyEquipamentosAlugadosItems(snapshot = {}) {
   const items = [];
-  const dias = toNumber(snapshot.dias)
-    || toNumber(snapshot.diasPreparacao) + toNumber(snapshot.diasConcretagem) + toNumber(snapshot.diasAcabamento);
+  const diasInformados = toNumber(snapshot.dias);
+  const diasCronograma = toNumber(snapshot.diasPreparacao)
+    + toNumber(snapshot.diasConcretagem)
+    + toNumber(snapshot.diasAcabamento);
+  const dias = diasInformados > 0 ? diasInformados : diasCronograma;
   try {
     const parsed = JSON.parse(snapshot.equipamentosAlugadosItems || "[]");
     if (Array.isArray(parsed)) {
@@ -1868,7 +1872,7 @@ function getLegacyEquipamentosAlugadosItems(snapshot = {}) {
           regua_vibratoria: "Régua vibratória"
         }[item?.tipo] || "Equipamento alugado";
         const diaria = toNumber(item?.diaria);
-        if (diaria > 0 || item?.tipo) {
+        if (diaria > 0) {
           items.push({
             descricao: label,
             valor: diaria * (dias > 0 ? dias : 1)
@@ -1919,8 +1923,7 @@ function readEquipamentosAlugadosFromUI() {
   return rows
     .map((row) => ({
       descricao: row.querySelector(".equipamento-alugado-descricao")?.value.trim() || "",
-      valor: toNumber(row.querySelector(".equipamento-alugado-valor")?.value),
-      totalItem: toNumber(row.querySelector(".equipamento-alugado-valor")?.value)
+      valor: toNumber(row.querySelector(".equipamento-alugado-valor")?.value)
     }))
     .filter((item) => item.descricao || item.valor > 0);
 }
@@ -3672,7 +3675,7 @@ function calcularOrcamento() {
   const equipamentosAlugados = readEquipamentosAlugadosFromUI();
   setEquipamentosAlugadosItemsSnapshot(equipamentosAlugados);
   const custoEquipamentosAlugados = equipamentosAlugados
-    .reduce((total, item) => total + item.totalItem, 0);
+    .reduce((total, item) => total + item.valor, 0);
   const tipoContratacao = $("tipoContratacao").value;
   const preparoLajeMaoObraM2 = toNumber($("preparoLajeMaoObraM2").value);
   const preparoLajeMaterialM2 = toNumber($("preparoLajeMaterialM2").value);

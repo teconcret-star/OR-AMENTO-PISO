@@ -312,7 +312,7 @@
 
               <div class="field full">
                 <h3>Cronograma e equipe por atividade</h3>
-                <small class="help-text">Preencha os dias e a equipe de cada etapa para compor automaticamente os totais de mão de obra.</small>
+                <small class="help-text">Preencha os dias e a equipe de cada etapa para compor automaticamente os totais e os custos de mão de obra.</small>
               </div>
 
               <div class="field">
@@ -499,9 +499,9 @@
                 <input type="text" id="servicoAdicionalDescricao" placeholder="Ex.: Nivelamento e polimento, piso sarrafeado, colocação de malha" />
               </div>
 
+              <input type="hidden" id="equipamentosTipo" value="alugados" />
               <div class="field full">
-                <input type="hidden" id="equipamentosTipo" value="alugados" />
-                <label>Equipamentos alugados</label>
+                <h3>Equipamentos alugados</h3>
                 <small class="help-text">Preencha apenas quando houver locação; se não houver, deixe os campos abaixo em branco.</small>
               </div>
 
@@ -749,8 +749,8 @@
                   </div>
 
                   <div class="resultado-item">
-                    <span>Funcionários considerados</span>
-                    <small class="help-text">Mostra a soma dos funcionários informados nas etapas de preparação, concretagem e acabamento.</small>
+                    <span>Soma de funcionários do cronograma</span>
+                    <small class="help-text">Mostra os funcionários informados em cada etapa e o total correspondente de funcionários-dia.</small>
                     <strong id="resFuncionarios">0</strong>
                   </div>
 

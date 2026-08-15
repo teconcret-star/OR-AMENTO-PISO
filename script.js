@@ -3477,8 +3477,8 @@ function calcularOrcamento() {
   const comCuraQuimica = curaQuimicaTipo !== "sem_cura";
   const valorCuraM2 = comCuraQuimica ? toNumber($("valorCuraM2").value) : 0;
   const custoCuraQuimica = metragem > 0 ? valorCuraM2 * metragem : 0;
-  const dias = diasPreparacao + diasConcretagem + diasAcabamento;
-  const funcionariosSelecionados = funcionariosPreparacao + funcionariosConcretagem + funcionariosAcabamento;
+  const dias = getCronogramaDiasTotal();
+  const funcionariosSelecionados = getCronogramaFuncionariosTotal();
   $("dias").value = formatNumberInputValue(dias);
   $("funcionarios").value = formatNumberInputValue(funcionariosSelecionados);
   const equipamentosTipo = getEquipamentosTipo();
@@ -3612,7 +3612,7 @@ function calcularOrcamento() {
   $("resPedagio").textContent = formatMoney(custoPedagio);
   $("resDeslocamento").textContent = formatMoney(custoDeslocamento);
   $("resMaoDeObra").textContent = formatMoney(custoMaoDeObra);
-  $("resFuncionarios").textContent = String(funcionariosSelecionados);
+  $("resFuncionarios").textContent = `Preparação ${funcionariosPreparacao} + Concretagem ${funcionariosConcretagem} + Acabamento ${funcionariosAcabamento} = ${formatNumber(funcionarioDias)} ${pluralize(funcionarioDias, "funcionário-dia", "funcionários-dia")}`;
   $("resAlimentacao").textContent = formatMoney(custoAlimentacao);
   $("resHotel").textContent = formatMoney(custoHotel);
   $("resFacasQtd").textContent = formatConsumableSetsAndItems(jogosFacasEstimados, facasEstimadas, "faca", "facas");
@@ -5058,6 +5058,19 @@ function bindStaticEvents() {
       calcularOrcamento();
       salvarRascunhoLocal();
     }
+  });
+
+  [
+    "diasPreparacao",
+    "funcionariosPreparacao",
+    "diasConcretagem",
+    "funcionariosConcretagem",
+    "diasAcabamento",
+    "funcionariosAcabamento"
+  ].forEach((id) => {
+    ["input", "change"].forEach((eventName) => {
+      $(id).addEventListener(eventName, atualizarModoFuncionarios);
+    });
   });
 
   $("usuarioTipo").addEventListener("change", atualizarCampoAtivoUsuarioPorTipo);

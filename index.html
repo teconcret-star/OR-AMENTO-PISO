@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Proposta Comercial - Piso Industrial</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0f766e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="OrcaPiso" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -34,6 +43,7 @@
           <button class="tab-btn" data-tab="tabProposta">Proposta Comercial</button>
           <button class="tab-btn" data-tab="tabUsuarios" data-manager-only="true">Usuários</button>
           <button class="tab-btn" data-tab="tabDashboard" data-manager-only="true">Dashboard</button>
+          <button id="btnNovaProposta" class="tab-btn tab-btn-nova-proposta" type="button">＋ Nova proposta</button>
         </nav>
 
         <section id="tabPerfil" class="tab-panel active">
@@ -846,6 +856,7 @@
             <div class="acoes acoes-wrap">
               <button id="btnSalvarProposta" class="btn btn-primary">Salvar proposta</button>
               <button id="btnSalvarPdf" class="btn btn-secondary">Salvar em PDF</button>
+              <button id="btnCompartilharPdf" class="btn btn-secondary">Compartilhar PDF</button>
               <button id="btnWhatsApp" class="btn btn-secondary">Enviar no WhatsApp</button>
             </div>
 
@@ -1137,6 +1148,8 @@
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script defer src="script.js"></script>
 </body>
 </html>

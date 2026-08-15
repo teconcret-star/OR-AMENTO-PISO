@@ -43,6 +43,7 @@
           <button class="tab-btn" data-tab="tabProposta">Proposta Comercial</button>
           <button class="tab-btn" data-tab="tabUsuarios" data-manager-only="true">Usuários</button>
           <button class="tab-btn" data-tab="tabDashboard" data-manager-only="true">Dashboard</button>
+          <button class="tab-btn" data-tab="tabConfiguracoes" data-manager-only="true">Configurações</button>
           <button id="btnNovaProposta" class="tab-btn tab-btn-nova-proposta" type="button">＋ Nova proposta</button>
         </nav>
 
@@ -171,12 +172,7 @@
             <div class="grid">
               <div class="field full">
                 <h3>Veículo de passeio / equipe</h3>
-                <small class="help-text">Informe a quantidade de viagens conforme a etapa da obra (preparação/montagem, concretagem e acabamento/cortes/PU).</small>
-              </div>
-
-              <div class="field">
-                <label for="consumo">Consumo do veículo de passeio (km/l)</label>
-                <input type="number" id="consumo" min="0" step="0.01" placeholder="0,00" />
+                <small class="help-text">Informe a quantidade de viagens conforme a etapa da obra (preparação/montagem, concretagem e acabamento/cortes/PU). O consumo (km/l) é configurado na aba Configurações.</small>
               </div>
 
               <div class="field">
@@ -200,13 +196,28 @@
               </div>
 
               <div class="field full">
-                <h3>Caminhão / transporte de maquinário</h3>
-                <small class="help-text">Informe viagens do caminhão apenas nas etapas em que houver transporte de máquinas, como concretagem.</small>
+                <h3>Van</h3>
+                <small class="help-text">Preencha apenas quando houver van na obra. O consumo é configurado na aba Configurações.</small>
               </div>
 
               <div class="field">
-                <label for="consumoCaminhao">Consumo do caminhão (km/l)</label>
-                <input type="number" id="consumoCaminhao" min="0" step="0.01" placeholder="0,00" />
+                <label for="viagensVan">Quantidade de viagens da van</label>
+                <input type="number" id="viagensVan" min="0" step="1" value="0" />
+              </div>
+
+              <div class="field">
+                <label for="quantidadeVans">Quantidade de vans</label>
+                <input type="number" id="quantidadeVans" min="0" step="1" value="0" />
+              </div>
+
+              <div class="field">
+                <label for="pedagioVan">Pedágio por viagem da van (R$)</label>
+                <input type="number" id="pedagioVan" min="0" step="0.01" placeholder="0,00" />
+              </div>
+
+              <div class="field full">
+                <h3>Caminhão / transporte de maquinário</h3>
+                <small class="help-text">Informe viagens do caminhão apenas nas etapas em que houver transporte de máquinas, como concretagem. O consumo é configurado na aba Configurações.</small>
               </div>
 
               <div class="field">
@@ -236,58 +247,6 @@
             </div>
           </section>
 
-          <section class="card" data-admin-only-block="true">
-            <h2>Estimativas manuais por m²</h2>
-            <p class="help-text auth-description">Lance manualmente os parâmetros usados para estimar facas, discos e combustível das máquinas por área concretada. Os campos começam em branco e só entram no cálculo com os valores informados nesta proposta.</p>
-            <form id="machineDbForm" class="grid">
-              <div class="field">
-                <label for="paramRendimentoFacas">Rendimento por faca (m²/unidade)</label>
-                <input type="number" id="paramRendimentoFacas" min="0.01" step="0.01" />
-              </div>
-              <div class="field">
-                <label for="paramFacasPorJogo">Facas por jogo</label>
-                <input type="number" id="paramFacasPorJogo" min="1" step="1" />
-              </div>
-              <div class="field">
-                <label for="paramPrecoFaca">Preço por faca (R$)</label>
-                <input type="number" id="paramPrecoFaca" min="0" step="0.01" />
-              </div>
-              <div class="field">
-                <label for="paramRendimentoDisco">Rendimento por disco de flotagem (m²/unidade)</label>
-                <input type="number" id="paramRendimentoDisco" min="0.01" step="0.01" />
-              </div>
-              <div class="field">
-                <label for="paramDiscosPorJogo">Discos por jogo</label>
-                <input type="number" id="paramDiscosPorJogo" min="1" step="1" />
-              </div>
-              <div class="field">
-                <label for="paramPrecoDisco">Preço por disco de flotagem (R$)</label>
-                <input type="number" id="paramPrecoDisco" min="0" step="0.01" />
-              </div>
-              <div class="field">
-                <label for="paramConsumoMaquinaDupla">Consumo máquina dupla (litros/m²)</label>
-                <input type="number" id="paramConsumoMaquinaDupla" min="0" step="0.0001" />
-              </div>
-              <div class="field">
-                <label for="paramConsumoMaquinaSimples">Consumo máquina simples (litros/m²)</label>
-                <input type="number" id="paramConsumoMaquinaSimples" min="0" step="0.0001" />
-              </div>
-              <div class="field">
-                <label for="paramConsumoMaquinaCorte">Consumo máquina de corte (litros/m²)</label>
-                <input type="number" id="paramConsumoMaquinaCorte" min="0" step="0.0001" />
-              </div>
-              <div class="field full">
-                <small class="help-text">O consumo total por m² considera a soma dos consumos de máquina dupla, simples e corte.</small>
-              </div>
-              <div class="field full">
-                <div class="acoes">
-                  <button id="btnSalvarBancoDados" type="submit" class="btn btn-primary">Salvar parâmetros</button>
-                  <button id="btnRestaurarBancoDados" type="button" class="btn btn-secondary">Restaurar padrão</button>
-                </div>
-              </div>
-            </form>
-          </section>
-
           <section class="card">
             <h2>Mão de obra</h2>
             <input type="hidden" id="modoFuncionarios" value="manual" />
@@ -301,6 +260,7 @@
 
               <div class="field">
                 <label for="valorDia">Valor por funcionário/dia (R$)</label>
+                <small class="help-text">Pré-preenchido a partir das Configurações. Pode ser ajustado por proposta.</small>
                 <input type="number" id="valorDia" min="0" step="0.01" placeholder="0,00" />
               </div>
 
@@ -352,6 +312,7 @@
 
               <div class="field">
                 <label for="valorDiarista">Valor por diarista/dia (R$)</label>
+                <small class="help-text">Pré-preenchido a partir das Configurações. Pode ser ajustado por proposta.</small>
                 <input type="number" id="valorDiarista" min="0" step="0.01" placeholder="0,00" />
               </div>
 
@@ -511,8 +472,6 @@
                 <div id="equipamentosAlugadosList" class="equipamentos-lista"></div>
                 <button type="button" id="btnAdicionarEquipamentoAlugado" class="btn btn-secondary btn-inline">Adicionar item</button>
                 <small class="help-text">O valor total de cada item será calculado por diária x quantidade de dias.</small>
-                <label for="equipamentosAlugadosObservacao">Observação sobre equipamentos alugados</label>
-                <textarea id="equipamentosAlugadosObservacao" rows="3" placeholder="Ex.: Valores sujeitos à disponibilidade e reajuste do locador."></textarea>
               </div>
 
               <div class="field">
@@ -1132,6 +1091,106 @@
               </div>
             </div>
           </section>
+        </section>
+
+        <section id="tabConfiguracoes" class="tab-panel">
+
+          <section class="card">
+            <h2>Combustível e deslocamento</h2>
+            <p class="help-text">Configure os consumos padrão de combustível para cada tipo de veículo. Esses valores são usados automaticamente no cálculo das propostas.</p>
+            <form id="configCombustivelForm" class="grid">
+              <div class="field">
+                <label for="configConsumoPasseio">Consumo do veículo de passeio (km/l)</label>
+                <input type="number" id="configConsumoPasseio" min="0" step="0.01" placeholder="0,00" />
+              </div>
+              <div class="field">
+                <label for="configConsumoVan">Consumo da van (km/l)</label>
+                <input type="number" id="configConsumoVan" min="0" step="0.01" placeholder="0,00" />
+              </div>
+              <div class="field">
+                <label for="configConsumoCaminhao">Consumo do caminhão (km/l)</label>
+                <input type="number" id="configConsumoCaminhao" min="0" step="0.01" placeholder="0,00" />
+              </div>
+              <div class="field full">
+                <div class="acoes">
+                  <button id="btnSalvarConfigCombustivel" type="submit" class="btn btn-primary">Salvar combustível</button>
+                </div>
+              </div>
+            </form>
+          </section>
+
+          <section class="card">
+            <h2>Estimativas de consumo de equipamento</h2>
+            <p class="help-text">Configure os parâmetros usados para estimar facas, discos e combustível das máquinas por área concretada. Esses valores são aplicados automaticamente no cálculo das propostas.</p>
+            <form id="machineDbForm" class="grid">
+              <div class="field">
+                <label for="paramRendimentoFacas">Rendimento por faca (m²/unidade)</label>
+                <input type="number" id="paramRendimentoFacas" min="0.01" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="paramFacasPorJogo">Facas por jogo</label>
+                <input type="number" id="paramFacasPorJogo" min="1" step="1" />
+              </div>
+              <div class="field">
+                <label for="paramPrecoFaca">Preço por faca (R$)</label>
+                <input type="number" id="paramPrecoFaca" min="0" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="paramRendimentoDisco">Rendimento por disco de flotagem (m²/unidade)</label>
+                <input type="number" id="paramRendimentoDisco" min="0.01" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="paramDiscosPorJogo">Discos por jogo</label>
+                <input type="number" id="paramDiscosPorJogo" min="1" step="1" />
+              </div>
+              <div class="field">
+                <label for="paramPrecoDisco">Preço por disco de flotagem (R$)</label>
+                <input type="number" id="paramPrecoDisco" min="0" step="0.01" />
+              </div>
+              <div class="field">
+                <label for="paramConsumoMaquinaDupla">Consumo máquina dupla (litros/m²)</label>
+                <input type="number" id="paramConsumoMaquinaDupla" min="0" step="0.0001" />
+              </div>
+              <div class="field">
+                <label for="paramConsumoMaquinaSimples">Consumo máquina simples (litros/m²)</label>
+                <input type="number" id="paramConsumoMaquinaSimples" min="0" step="0.0001" />
+              </div>
+              <div class="field">
+                <label for="paramConsumoMaquinaCorte">Consumo máquina de corte (litros/m²)</label>
+                <input type="number" id="paramConsumoMaquinaCorte" min="0" step="0.0001" />
+              </div>
+              <div class="field full">
+                <small class="help-text">O consumo total por m² considera a soma dos consumos de máquina dupla, simples e corte.</small>
+              </div>
+              <div class="field full">
+                <div class="acoes">
+                  <button id="btnSalvarBancoDados" type="submit" class="btn btn-primary">Salvar estimativas</button>
+                  <button id="btnRestaurarBancoDados" type="button" class="btn btn-secondary">Restaurar padrão</button>
+                </div>
+              </div>
+            </form>
+          </section>
+
+          <section class="card">
+            <h2>Mão de obra</h2>
+            <p class="help-text">Configure os valores padrão de custo de mão de obra. Esses valores são aplicados automaticamente ao criar uma nova proposta e podem ser ajustados por proposta.</p>
+            <form id="configMaoDeObraForm" class="grid">
+              <div class="field">
+                <label for="configValorDia">Valor por funcionário/dia (R$)</label>
+                <input type="number" id="configValorDia" min="0" step="0.01" placeholder="0,00" />
+              </div>
+              <div class="field">
+                <label for="configValorDiarista">Valor por diarista/dia (R$)</label>
+                <input type="number" id="configValorDiarista" min="0" step="0.01" placeholder="0,00" />
+              </div>
+              <div class="field full">
+                <div class="acoes">
+                  <button id="btnSalvarConfigMaoDeObra" type="submit" class="btn btn-primary">Salvar mão de obra</button>
+                </div>
+              </div>
+            </form>
+          </section>
+
         </section>
       </section>
     </main>

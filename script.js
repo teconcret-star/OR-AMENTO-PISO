@@ -6,6 +6,7 @@ const SESSION_STORAGE_KEY = "orcamento_sessao_v1";
 const PROPOSALS_STORAGE_KEY = "propostas_salvas_v1";
 const CLIENTS_STORAGE_KEY = "clientes_salvos_v1";
 const MACHINE_DB_STORAGE_KEY = "orcamento_banco_estimativas_v1";
+const GLOBAL_CONFIG_STORAGE_KEY = "orcamento_config_global_v1";
 const PENDING_SYNC_STORAGE_KEY = "orcamento_firestore_pending_sync_v1";
 const LEGACY_DRAFT_STORAGE_KEY = "proposta_rascunho_v1";
 const DRAFT_STORAGE_KEY_PREFIX = "proposta_rascunho_usuario_v1_";
@@ -40,6 +41,7 @@ const FIRESTORE_USERS_DOC = "users";
 const FIRESTORE_PROPOSALS_DOC = "proposals";
 const FIRESTORE_CLIENTS_DOC = "clients";
 const FIRESTORE_MACHINE_DB_DOC = "machineDatabase";
+const FIRESTORE_GLOBAL_CONFIG_DOC = "globalConfig";
 const FIRESTORE_DRAFT_DOC_PREFIX = "draft_";
 const FIRESTORE_USERS_COLLECTION = "usuarios";
 const FIRESTORE_PROPOSALS_COLLECTION = "propostas";
@@ -125,6 +127,13 @@ const DEFAULT_MACHINE_DATABASE = {
   consumoSimplesLitrosM2: 0.08,
   consumoCorteLitrosM2: 0.04
 };
+const DEFAULT_GLOBAL_CONFIG = {
+  consumoVeiculoPasseio: 0,
+  consumoVan: 0,
+  consumoCaminhao: 0,
+  valorDiaFuncionario: 0,
+  valorDiarista: 0
+};
 /**
  * Preset de referência de mercado para parâmetros por m².
  * Unidades:
@@ -201,6 +210,7 @@ function getFirestoreStorageKey(docId) {
   if (docId === FIRESTORE_PROPOSALS_DOC || docId === FIRESTORE_PROPOSALS_SYNC_DOC) return PROPOSALS_STORAGE_KEY;
   if (docId === FIRESTORE_CLIENTS_DOC || docId === FIRESTORE_CLIENTS_SYNC_DOC) return CLIENTS_STORAGE_KEY;
   if (docId === FIRESTORE_MACHINE_DB_DOC) return MACHINE_DB_STORAGE_KEY;
+  if (docId === FIRESTORE_GLOBAL_CONFIG_DOC) return GLOBAL_CONFIG_STORAGE_KEY;
   if (docId?.startsWith?.(FIRESTORE_DRAFT_DOC_PREFIX)) {
     const userId = docId.slice(FIRESTORE_DRAFT_DOC_PREFIX.length);
     return userId ? `${DRAFT_STORAGE_KEY_PREFIX}${userId}` : "";
@@ -259,6 +269,10 @@ function seedRuntimeStorageFromPendingDoc(docId, value) {
   }
   if (docId === FIRESTORE_MACHINE_DB_DOC && isPlainObject(value)) {
     runtimeStorage.set(storageKey, normalizeMachineDatabase(value));
+    return;
+  }
+  if (docId === FIRESTORE_GLOBAL_CONFIG_DOC && isPlainObject(value)) {
+    runtimeStorage.set(storageKey, normalizeGlobalConfig(value));
     return;
   }
   runtimeStorage.set(storageKey, cloneStorageValue(value));
@@ -1235,6 +1249,7 @@ function subscribeFirestoreChanges() {
   };
 
   initializeDocument(FIRESTORE_MACHINE_DB_DOC, readJsonStorage(MACHINE_DB_STORAGE_KEY, DEFAULT_MACHINE_DATABASE));
+  initializeDocument(FIRESTORE_GLOBAL_CONFIG_DOC, readJsonStorage(GLOBAL_CONFIG_STORAGE_KEY, DEFAULT_GLOBAL_CONFIG));
 
   const subscribeRecordCollection = (collectionName, onRecords, errorMessage) => {
     const collectionRef = getFirestoreCollection(collectionName);
@@ -1311,6 +1326,20 @@ function subscribeFirestoreChanges() {
       removeLegacyStorageItem(MACHINE_DB_STORAGE_KEY);
     }, (error) => {
       handleFirebaseConnectionError("Erro ao escutar banco de máquinas:", error);
+    })
+  );
+
+  firestoreUnsubscribers.push(
+    col.doc(FIRESTORE_GLOBAL_CONFIG_DOC).onSnapshot((snap) => {
+      if (!snap.exists) return;
+      if (shouldSkipFirestoreSnapshot(FIRESTORE_GLOBAL_CONFIG_DOC, snap)) return;
+      const data = snap.data()?.data;
+      if (!data || typeof data !== "object" || Array.isArray(data)) return;
+      writeJsonStorage(GLOBAL_CONFIG_STORAGE_KEY, normalizeGlobalConfig(data));
+      removeLegacyStorageItem(GLOBAL_CONFIG_STORAGE_KEY);
+      applyGlobalConfigToForm();
+    }, (error) => {
+      handleFirebaseConnectionError("Erro ao escutar configurações globais:", error);
     })
   );
 
@@ -1886,6 +1915,58 @@ function saveMachineDatabase(data) {
   const success = writeJsonStorage(MACHINE_DB_STORAGE_KEY, normalized);
   if (success) syncFirestoreDoc(FIRESTORE_MACHINE_DB_DOC, normalized);
   return success;
+}
+
+function normalizeGlobalConfig(data = {}) {
+  return {
+    consumoVeiculoPasseio: Math.max(0, toNumber(data.consumoVeiculoPasseio)),
+    consumoVan: Math.max(0, toNumber(data.consumoVan)),
+    consumoCaminhao: Math.max(0, toNumber(data.consumoCaminhao)),
+    valorDiaFuncionario: Math.max(0, toNumber(data.valorDiaFuncionario)),
+    valorDiarista: Math.max(0, toNumber(data.valorDiarista))
+  };
+}
+
+function getGlobalConfig() {
+  const stored = readJsonStorage(GLOBAL_CONFIG_STORAGE_KEY, null);
+  return normalizeGlobalConfig(stored || DEFAULT_GLOBAL_CONFIG);
+}
+
+function saveGlobalConfig(data) {
+  const normalized = normalizeGlobalConfig(data);
+  const success = writeJsonStorage(GLOBAL_CONFIG_STORAGE_KEY, normalized);
+  if (success) syncFirestoreDoc(FIRESTORE_GLOBAL_CONFIG_DOC, normalized);
+  return success;
+}
+
+function applyGlobalConfigToForm() {
+  const cfg = getGlobalConfig();
+  if ($("configConsumoPasseio")) $("configConsumoPasseio").value = cfg.consumoVeiculoPasseio > 0 ? String(cfg.consumoVeiculoPasseio) : "";
+  if ($("configConsumoVan")) $("configConsumoVan").value = cfg.consumoVan > 0 ? String(cfg.consumoVan) : "";
+  if ($("configConsumoCaminhao")) $("configConsumoCaminhao").value = cfg.consumoCaminhao > 0 ? String(cfg.consumoCaminhao) : "";
+  if ($("configValorDia")) $("configValorDia").value = cfg.valorDiaFuncionario > 0 ? String(cfg.valorDiaFuncionario) : "";
+  if ($("configValorDiarista")) $("configValorDiarista").value = cfg.valorDiarista > 0 ? String(cfg.valorDiarista) : "";
+}
+
+function readGlobalConfigCombustivelFromForm() {
+  return {
+    consumoVeiculoPasseio: toNumber($("configConsumoPasseio")?.value),
+    consumoVan: toNumber($("configConsumoVan")?.value),
+    consumoCaminhao: toNumber($("configConsumoCaminhao")?.value)
+  };
+}
+
+function readGlobalConfigMaoDeObraFromForm() {
+  return {
+    valorDiaFuncionario: toNumber($("configValorDia")?.value),
+    valorDiarista: toNumber($("configValorDiarista")?.value)
+  };
+}
+
+function preencherPropostaComConfiguracoes() {
+  const cfg = getGlobalConfig();
+  if ($("valorDia") && !$("valorDia").value) $("valorDia").value = cfg.valorDiaFuncionario > 0 ? String(cfg.valorDiaFuncionario) : "";
+  if ($("valorDiarista") && !$("valorDiarista").value) $("valorDiarista").value = cfg.valorDiarista > 0 ? String(cfg.valorDiarista) : "";
 }
 
 function buildTablesExportPayload() {
@@ -2543,25 +2624,18 @@ function proposalFieldsSnapshot() {
     "endereco",
     "metragem",
     "distancia",
-    "consumo",
     "precoCombustivel",
     "pedagio",
+    "viagens",
     "quantidadeVeiculos",
-    "consumoCaminhao",
+    "viagensVan",
+    "quantidadeVans",
+    "pedagioVan",
     "pedagioCaminhao",
     "viagensCaminhao",
     "quantidadeCaminhoes",
     "gastoLogisticoPessoal",
     "gastoLogisticoMaquinario",
-    "paramRendimentoFacas",
-    "paramFacasPorJogo",
-    "paramPrecoFaca",
-    "paramRendimentoDisco",
-    "paramDiscosPorJogo",
-    "paramPrecoDisco",
-    "paramConsumoMaquinaDupla",
-    "paramConsumoMaquinaSimples",
-    "paramConsumoMaquinaCorte",
     "modoFuncionarios",
     "funcionarios",
     "valorDia",
@@ -2600,13 +2674,11 @@ function proposalFieldsSnapshot() {
     "servicoAdicionalDescricao",
     "equipamentosTipo",
     "equipamentosAlugadosItems",
-    "equipamentosAlugadosObservacao",
     "locacaoManualValor",
     "locacaoManualDescricao",
     "outrosCustos",
     "lucro",
     "impostoPercentual",
-    "viagens",
     "propostaTitulo",
     "propostaNumero",
     "propostaValidade",
@@ -2631,7 +2703,7 @@ function applyProposalSnapshot(snapshot = {}) {
     $("propostaClienteId").dataset.snapshotValue = snapshot.propostaClienteId;
   }
   Object.keys(snapshot).forEach((id) => {
-    if ($(id)) $(id).value = snapshot[id];
+    if ($(id) && !MACHINE_DATABASE_FIELD_IDS.includes(id)) $(id).value = snapshot[id];
   });
   populateProposalClientSelect();
   atualizarModoFuncionarios();
@@ -3443,13 +3515,18 @@ function calcularOrcamento() {
   const endereco = $("endereco").value.trim() || "-";
   const metragem = toNumber($("metragem").value);
   const distancia = toNumber($("distancia").value);
-  const consumo = toNumber($("consumo").value);
+  const globalCfg = getGlobalConfig();
+  const consumo = globalCfg.consumoVeiculoPasseio;
   const precoCombustivel = toNumber($("precoCombustivel").value);
   const pedagio = toNumber($("pedagio").value);
   const viagens = toNumber($("viagens").value);
   const quantidadeVeiculosDigitada = parseInt($("quantidadeVeiculos").value, 10);
   const quantidadeVeiculos = quantidadeVeiculosDigitada > 0 ? quantidadeVeiculosDigitada : 1;
-  const consumoCaminhao = toNumber($("consumoCaminhao").value);
+  const consumoVan = globalCfg.consumoVan;
+  const viagensVan = toNumber($("viagensVan").value);
+  const quantidadeVans = toPositiveIntegerOrFallback($("quantidadeVans").value, 0);
+  const pedagioVan = toNumber($("pedagioVan").value);
+  const consumoCaminhao = globalCfg.consumoCaminhao;
   const pedagioCaminhao = toNumber($("pedagioCaminhao").value);
   const viagensCaminhao = toNumber($("viagensCaminhao").value);
   const quantidadeCaminhoes = toPositiveIntegerOrFallback($("quantidadeCaminhoes").value, 0);
@@ -3507,7 +3584,7 @@ function calcularOrcamento() {
   const outrosCustos = toNumber($("outrosCustos").value);
   const lucroPercentual = toNumber($("lucro").value);
   const impostoPercentual = toNumber($("impostoPercentual").value);
-  const machineDb = readMachineDatabaseFromForm();
+  const machineDb = getMachineDatabase();
 
   const multiplicadorViagens = viagens > 0 ? viagens : 1;
   const distanciaTotal = distancia * multiplicadorViagens;
@@ -3519,9 +3596,16 @@ function calcularOrcamento() {
     ? ((distanciaTotalCaminhao / consumoCaminhao) * precoCombustivel) * quantidadeCaminhoes
     : 0;
   const custoPedagioCaminhao = pedagioCaminhao * multiplicadorViagensCaminhao * quantidadeCaminhoes;
+  const distanciaTotalVan = distancia * viagensVan;
+  const custoCombustivelVan = consumoVan > 0 && quantidadeVans > 0
+    ? ((distanciaTotalVan / consumoVan) * precoCombustivel) * quantidadeVans
+    : 0;
+  const custoPedagioVan = pedagioVan * viagensVan * quantidadeVans;
   const custoDeslocamento =
     custoCombustivel
     + custoPedagio
+    + custoCombustivelVan
+    + custoPedagioVan
     + custoCombustivelCaminhao
     + custoPedagioCaminhao
     + gastoLogisticoPessoal
@@ -3608,8 +3692,8 @@ function calcularOrcamento() {
   $("prevLocalData").textContent = [$("propostaCidade").value.trim(), formatDate()].filter(Boolean).join(", ");
   $("prevNumeroProposta").textContent = `Proposta Nº ${$("propostaNumero").value.trim() || "-"}`;
 
-  $("resCombustivel").textContent = formatMoney(custoCombustivel);
-  $("resPedagio").textContent = formatMoney(custoPedagio);
+  $("resCombustivel").textContent = formatMoney(custoCombustivel + custoCombustivelVan);
+  $("resPedagio").textContent = formatMoney(custoPedagio + custoPedagioVan);
   $("resDeslocamento").textContent = formatMoney(custoDeslocamento);
   $("resMaoDeObra").textContent = formatMoney(custoMaoDeObra);
   $("resFuncionarios").textContent = `Preparação ${funcionariosPreparacao} + Concretagem ${funcionariosConcretagem} + Acabamento ${funcionariosAcabamento} = ${formatNumber(funcionarioDias)} ${pluralize(funcionarioDias, "funcionário-dia", "funcionários-dia")}`;
@@ -3961,26 +4045,18 @@ function limparCampos() {
     "endereco",
     "metragem",
     "distancia",
-    "consumo",
     "precoCombustivel",
     "pedagio",
     "viagens",
     "quantidadeVeiculos",
-    "consumoCaminhao",
+    "viagensVan",
+    "quantidadeVans",
+    "pedagioVan",
     "pedagioCaminhao",
     "viagensCaminhao",
     "quantidadeCaminhoes",
     "gastoLogisticoPessoal",
     "gastoLogisticoMaquinario",
-    "paramRendimentoFacas",
-    "paramFacasPorJogo",
-    "paramPrecoFaca",
-    "paramRendimentoDisco",
-    "paramDiscosPorJogo",
-    "paramPrecoDisco",
-    "paramConsumoMaquinaDupla",
-    "paramConsumoMaquinaSimples",
-    "paramConsumoMaquinaCorte",
     "modoFuncionarios",
     "funcionarios",
     "valorDia",
@@ -4019,7 +4095,6 @@ function limparCampos() {
     "servicoAdicionalDescricao",
     "equipamentosTipo",
     "equipamentosAlugadosItems",
-    "equipamentosAlugadosObservacao",
     "locacaoManualValor",
     "locacaoManualDescricao",
     "outrosCustos",
@@ -4044,6 +4119,8 @@ function limparCampos() {
 
   $("viagens").value = 1;
   $("quantidadeVeiculos").value = 1;
+  $("viagensVan").value = 0;
+  $("quantidadeVans").value = 0;
   $("viagensCaminhao").value = 0;
   $("quantidadeCaminhoes").value = 0;
   $("modoFuncionarios").value = WORKER_MODE_MANUAL;
@@ -4066,6 +4143,7 @@ function limparCampos() {
     clearFirestoreDraft();
   }
   updateDraftStatus("Rascunho limpo.");
+  preencherPropostaComConfiguracoes();
   calcularOrcamento();
   showToast("Campos limpos com sucesso.");
 }
@@ -4090,6 +4168,27 @@ function restaurarBancoDadosEstimativas() {
   calcularOrcamento();
   salvarRascunhoLocal();
   showToast("Parâmetros restaurados para o padrão.");
+}
+
+function salvarConfigCombustivel(event) {
+  event?.preventDefault();
+  if (!isAdmin()) return;
+  const current = getGlobalConfig();
+  const updates = readGlobalConfigCombustivelFromForm();
+  const next = { ...current, ...updates };
+  if (!saveGlobalConfig(next)) return;
+  calcularOrcamento();
+  showToast("Consumo de combustível salvo.");
+}
+
+function salvarConfigMaoDeObra(event) {
+  event?.preventDefault();
+  if (!isAdmin()) return;
+  const current = getGlobalConfig();
+  const updates = readGlobalConfigMaoDeObraFromForm();
+  const next = { ...current, ...updates };
+  if (!saveGlobalConfig(next)) return;
+  showToast("Configuração de mão de obra salva.");
 }
 
 function salvarRascunhoLocal() {
@@ -4807,9 +4906,12 @@ async function atualizarInterfaceAutenticada() {
   renderDashboard();
   atualizarTextoBotaoProposta();
   limparFormularioBancoDadosEstimativas();
+  applyMachineDatabaseToForm();
+  applyGlobalConfigToForm();
   atualizarModoFuncionarios({ preserveManualValue: false });
   atualizarCampoEquipamentosAlugados({ preserveValuesWhenHidden: true, syncFromSnapshot: true });
   await carregarRascunhoLocal();
+  preencherPropostaComConfiguracoes();
   atualizarCampoPisoTela({ preserveValueWhenDisabled: true });
   atualizarCampoCuraQuimica({ preserveValueWhenDisabled: true });
   atualizarCampoStatusProposta({ preserveValueWhenHidden: true });
@@ -4875,6 +4977,8 @@ function bindStaticEvents() {
   $("userForm").addEventListener("submit", salvarUsuario);
   $("clientForm").addEventListener("submit", salvarCliente);
   $("machineDbForm").addEventListener("submit", salvarBancoDadosEstimativas);
+  $("configCombustivelForm").addEventListener("submit", salvarConfigCombustivel);
+  $("configMaoDeObraForm").addEventListener("submit", salvarConfigMaoDeObra);
   const btnLogout = $("btnLogout");
   if (btnLogout) {
     btnLogout.addEventListener("click", () => {
@@ -5084,26 +5188,18 @@ function bindStaticEvents() {
     "cep",
     "endereco",
     "distancia",
-    "consumo",
     "precoCombustivel",
     "pedagio",
     "quantidadeVeiculos",
     "viagens",
-    "consumoCaminhao",
+    "pedagioVan",
+    "viagensVan",
+    "quantidadeVans",
     "pedagioCaminhao",
     "viagensCaminhao",
     "quantidadeCaminhoes",
     "gastoLogisticoPessoal",
     "gastoLogisticoMaquinario",
-    "paramRendimentoFacas",
-    "paramFacasPorJogo",
-    "paramPrecoFaca",
-    "paramRendimentoDisco",
-    "paramDiscosPorJogo",
-    "paramPrecoDisco",
-    "paramConsumoMaquinaDupla",
-    "paramConsumoMaquinaSimples",
-    "paramConsumoMaquinaCorte",
     "valorDia",
     "dias",
     "diasPreparacao",
@@ -5136,7 +5232,6 @@ function bindStaticEvents() {
     "pinturaEpoxiM2",
     "servicoAdicionalValor",
     "servicoAdicionalDescricao",
-    "equipamentosAlugadosObservacao",
     "locacaoManualValor",
     "locacaoManualDescricao",
     "outrosCustos",
@@ -5244,6 +5339,8 @@ async function init() {
     updateFirebaseStatus(FIREBASE_STATUS_LOCAL);
     await ensureAdminExists();
     limparFormularioBancoDadosEstimativas();
+    applyMachineDatabaseToForm();
+    applyGlobalConfigToForm();
     updateAppVisibility();
     await restoreSession();
     atualizarTextoBotaoProposta();
@@ -5252,6 +5349,7 @@ async function init() {
     atualizarCampoCuraQuimica({ preserveValueWhenDisabled: false });
     atualizarCampoEquipamentosAlugados({ preserveValuesWhenHidden: true, syncFromSnapshot: true });
     atualizarCampoStatusProposta({ preserveValueWhenHidden: false });
+    preencherPropostaComConfiguracoes();
     if (!$("propostaTextoPadrao").value.trim()) {
       $("propostaTextoPadrao").value = DEFAULT_STANDARD_TEXT;
     }

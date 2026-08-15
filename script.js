@@ -111,6 +111,13 @@ const MACHINE_DATABASE_FIELD_IDS = [
   "paramConsumoMaquinaSimples",
   "paramConsumoMaquinaCorte"
 ];
+const GLOBAL_CONFIG_FORM_FIELD_IDS = [
+  "configConsumoPasseio",
+  "configConsumoVan",
+  "configConsumoCaminhao",
+  "configValorDia",
+  "configValorDiarista"
+];
 const PROPOSAL_SERVICE_COLUMN_LABELS = {
   service: "Serviço",
   valuePerSquareMeter: "Valor por m²",
@@ -2703,7 +2710,7 @@ function applyProposalSnapshot(snapshot = {}) {
     $("propostaClienteId").dataset.snapshotValue = snapshot.propostaClienteId;
   }
   Object.keys(snapshot).forEach((id) => {
-    if ($(id) && !MACHINE_DATABASE_FIELD_IDS.includes(id)) $(id).value = snapshot[id];
+    if ($(id) && !MACHINE_DATABASE_FIELD_IDS.includes(id) && !GLOBAL_CONFIG_FORM_FIELD_IDS.includes(id)) $(id).value = snapshot[id];
   });
   populateProposalClientSelect();
   atualizarModoFuncionarios();
@@ -3600,7 +3607,7 @@ function calcularOrcamento() {
   const custoCombustivelVan = consumoVan > 0 && quantidadeVans > 0
     ? ((distanciaTotalVan / consumoVan) * precoCombustivel) * quantidadeVans
     : 0;
-  const custoPedagioVan = pedagioVan * viagensVan * quantidadeVans;
+  const custoPedagioVan = quantidadeVans > 0 ? pedagioVan * viagensVan * quantidadeVans : 0;
   const custoDeslocamento =
     custoCombustivel
     + custoPedagio

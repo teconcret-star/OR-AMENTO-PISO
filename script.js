@@ -2585,7 +2585,7 @@ async function ensureOpenAccessUser() {
     role: ROLE_ADMIN,
     filial: DEFAULT_FILIAL,
     active: true,
-    passwordHash: "open-access",
+    passwordHash: `open_access_${createUniqueId()}`,
     passwordSalt: "",
     passwordIterations: PASSWORD_ITERATIONS,
     mustChangePassword: false,

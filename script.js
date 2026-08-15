@@ -125,7 +125,9 @@ const GLOBAL_CONFIG_FORM_FIELD_IDS = [
   "configConsumoCaminhao",
   "configPrecoCombustivel",
   "configValorDia",
-  "configValorDiarista"
+  "configValorDiarista",
+  "configValorHoraExtra",
+  "configAlimentacaoFuncionario"
 ];
 const PROPOSAL_SERVICE_COLUMN_LABELS = {
   service: "Serviço",
@@ -149,7 +151,9 @@ const DEFAULT_GLOBAL_CONFIG = {
   consumoCaminhao: 0,
   precoCombustivel: 0,
   valorDiaFuncionario: 0,
-  valorDiarista: 0
+  valorDiarista: 0,
+  valorHoraExtra: 0,
+  alimentacaoFuncionario: 0
 };
 /**
  * Preset de referência de mercado para parâmetros por m².
@@ -2088,7 +2092,9 @@ function normalizeGlobalConfig(data = {}) {
     consumoCaminhao: Math.max(0, toNumber(data.consumoCaminhao)),
     precoCombustivel: Math.max(0, toNumber(data.precoCombustivel)),
     valorDiaFuncionario: Math.max(0, toNumber(data.valorDiaFuncionario)),
-    valorDiarista: Math.max(0, toNumber(data.valorDiarista))
+    valorDiarista: Math.max(0, toNumber(data.valorDiarista)),
+    valorHoraExtra: Math.max(0, toNumber(data.valorHoraExtra)),
+    alimentacaoFuncionario: Math.max(0, toNumber(data.alimentacaoFuncionario))
   };
 }
 
@@ -2112,6 +2118,8 @@ function applyGlobalConfigToForm() {
   if ($("configPrecoCombustivel")) $("configPrecoCombustivel").value = cfg.precoCombustivel > 0 ? String(cfg.precoCombustivel) : "";
   if ($("configValorDia")) $("configValorDia").value = cfg.valorDiaFuncionario > 0 ? String(cfg.valorDiaFuncionario) : "";
   if ($("configValorDiarista")) $("configValorDiarista").value = cfg.valorDiarista > 0 ? String(cfg.valorDiarista) : "";
+  if ($("configValorHoraExtra")) $("configValorHoraExtra").value = cfg.valorHoraExtra > 0 ? String(cfg.valorHoraExtra) : "";
+  if ($("configAlimentacaoFuncionario")) $("configAlimentacaoFuncionario").value = cfg.alimentacaoFuncionario > 0 ? String(cfg.alimentacaoFuncionario) : "";
 }
 
 function readGlobalConfigCombustivelFromForm() {
@@ -2126,7 +2134,9 @@ function readGlobalConfigCombustivelFromForm() {
 function readGlobalConfigMaoDeObraFromForm() {
   return {
     valorDiaFuncionario: toNumber($("configValorDia")?.value),
-    valorDiarista: toNumber($("configValorDiarista")?.value)
+    valorDiarista: toNumber($("configValorDiarista")?.value),
+    valorHoraExtra: toNumber($("configValorHoraExtra")?.value),
+    alimentacaoFuncionario: toNumber($("configAlimentacaoFuncionario")?.value)
   };
 }
 
@@ -2134,6 +2144,8 @@ function preencherPropostaComConfiguracoes() {
   const cfg = getGlobalConfig();
   if ($("valorDia") && !$("valorDia").value) $("valorDia").value = cfg.valorDiaFuncionario > 0 ? String(cfg.valorDiaFuncionario) : "";
   if ($("valorDiarista") && !$("valorDiarista").value) $("valorDiarista").value = cfg.valorDiarista > 0 ? String(cfg.valorDiarista) : "";
+  if ($("valorHoraExtra")) $("valorHoraExtra").value = cfg.valorHoraExtra > 0 ? String(cfg.valorHoraExtra) : "";
+  if ($("alimentacaoFuncionario")) $("alimentacaoFuncionario").value = cfg.alimentacaoFuncionario > 0 ? String(cfg.alimentacaoFuncionario) : "";
 }
 
 function buildTablesExportPayload() {
@@ -2851,7 +2863,8 @@ function proposalFieldsSnapshot() {
   ];
 
   return ids.reduce((acc, id) => {
-    acc[id] = $(id).value;
+    const el = $(id);
+    if (el) acc[id] = el.value;
     return acc;
   }, {});
 }
@@ -2870,6 +2883,7 @@ function applyProposalSnapshot(snapshot = {}) {
   atualizarCampoCuraQuimica({ preserveValueWhenDisabled: true });
   atualizarCampoEquipamentosAlugados({ preserveValuesWhenHidden: true, syncFromSnapshot: true });
   atualizarCampoStatusProposta({ preserveValueWhenHidden: true });
+  preencherPropostaComConfiguracoes();
   calcularOrcamento();
 }
 
@@ -3713,8 +3727,8 @@ function calcularOrcamento() {
   setEquipamentosAlugadosItemsSnapshot(equipamentosAlugados);
   const custoEquipamentosAlugados = equipamentosAlugados
     .reduce((total, item) => total + item.totalItem, 0);
-  const locacaoManualValor = toNumber($("locacaoManualValor").value);
-  const locacaoManualDescricao = $("locacaoManualDescricao").value.trim();
+  const locacaoManualValor = toNumber($("locacaoManualValor")?.value);
+  const locacaoManualDescricao = $("locacaoManualDescricao")?.value.trim() ?? "";
   const tipoContratacao = $("tipoContratacao").value;
   const preparoLajeMaoObraM2 = toNumber($("preparoLajeMaoObraM2").value);
   const preparoLajeMaterialM2 = toNumber($("preparoLajeMaterialM2").value);
@@ -3729,7 +3743,7 @@ function calcularOrcamento() {
   const pinturaEpoxiM2 = toNumber($("pinturaEpoxiM2").value);
   const servicoAdicionalValor = toNumber($("servicoAdicionalValor").value);
   const servicoAdicionalDescricao = $("servicoAdicionalDescricao").value.trim();
-  const outrosCustos = toNumber($("outrosCustos").value);
+  const outrosCustos = toNumber($("outrosCustos")?.value);
   const lucroPercentual = toNumber($("lucro").value);
   const impostoPercentual = toNumber($("impostoPercentual").value);
   const machineDb = getMachineDatabase();
@@ -4251,7 +4265,8 @@ function limparCampos() {
   ];
 
   ids.forEach((id) => {
-    $(id).value = "";
+    const el = $(id);
+    if (el) el.value = "";
   });
 
   $("modoFuncionarios").value = WORKER_MODE_MANUAL;
@@ -4320,6 +4335,8 @@ function salvarConfigMaoDeObra(event) {
   const updates = readGlobalConfigMaoDeObraFromForm();
   const next = { ...current, ...updates };
   if (!saveGlobalConfig(next)) return;
+  preencherPropostaComConfiguracoes();
+  calcularOrcamento();
   showToast("Configuração de mão de obra salva.");
 }
 
@@ -4524,13 +4541,6 @@ function gerarMensagemWhatsApp() {
 async function imprimirSomenteProposta() {
   const proposta = document.querySelector(".proposta-preview");
   if (!proposta) return false;
-
-  // Touch-primary devices (phones, tablets) trigger printing of the parent
-  // window when iframe.contentWindow.print() is called, causing the entire
-  // page to print. Return false so the CSS @media print fallback is used.
-  if (window.matchMedia?.("(pointer: coarse)").matches) {
-    return false;
-  }
 
   const iframe = document.createElement("iframe");
   // Position off-screen at A4 usable width so layout is computed correctly for measurement.
@@ -5362,9 +5372,7 @@ function bindStaticEvents() {
     "quantidadeDiaristas",
     "valorDiarista",
     "quantidadeHorasExtras",
-    "valorHoraExtra",
     "encargos",
-    "alimentacaoFuncionario",
     "hotelFuncionario",
     "terraplanagemTotal",
     "valorTelaM2",
@@ -5383,9 +5391,6 @@ function bindStaticEvents() {
     "pinturaEpoxiM2",
     "servicoAdicionalValor",
     "servicoAdicionalDescricao",
-    "locacaoManualValor",
-    "locacaoManualDescricao",
-    "outrosCustos",
     "lucro",
     "impostoPercentual",
     "propostaTitulo",

@@ -171,68 +171,15 @@
 
             <div class="grid">
               <div class="field full">
-                <h3>Veículo de passeio / equipe</h3>
-                <small class="help-text">Informe a quantidade de viagens conforme a etapa da obra (preparação/montagem, concretagem e acabamento/cortes/PU). O consumo (km/l) é configurado na aba Configurações.</small>
+                <h3>Veículos de deslocamento</h3>
+                <small class="help-text">Adicione quantas linhas forem necessárias e selecione o tipo (carro de passeio, van ou caminhão). O consumo e o preço do combustível são definidos na aba Configurações.</small>
               </div>
 
-              <div class="field">
-                <label for="precoCombustivel">Preço do combustível (R$/l)</label>
-                <input type="number" id="precoCombustivel" min="0" step="0.01" placeholder="0,00" />
-              </div>
-
-              <div class="field">
-                <label for="pedagio">Pedágio por viagem do veículo de passeio (R$)</label>
-                <input type="number" id="pedagio" min="0" step="0.01" placeholder="0,00" />
-              </div>
-
-              <div class="field">
-                <label for="viagens">Quantidade de viagens do veículo de passeio</label>
-                <input type="number" id="viagens" min="1" step="1" value="1" />
-              </div>
-
-              <div class="field">
-                <label for="quantidadeVeiculos">Quantidade de veículos de passeio</label>
-                <input type="number" id="quantidadeVeiculos" min="1" step="1" value="1" />
-              </div>
-
-              <div class="field full">
-                <h3>Van</h3>
-                <small class="help-text">Preencha apenas quando houver van na obra. O consumo é configurado na aba Configurações.</small>
-              </div>
-
-              <div class="field">
-                <label for="viagensVan">Quantidade de viagens da van</label>
-                <input type="number" id="viagensVan" min="0" step="1" value="0" />
-              </div>
-
-              <div class="field">
-                <label for="quantidadeVans">Quantidade de vans</label>
-                <input type="number" id="quantidadeVans" min="0" step="1" value="0" />
-              </div>
-
-              <div class="field">
-                <label for="pedagioVan">Pedágio por viagem da van (R$)</label>
-                <input type="number" id="pedagioVan" min="0" step="0.01" placeholder="0,00" />
-              </div>
-
-              <div class="field full">
-                <h3>Caminhão / transporte de maquinário</h3>
-                <small class="help-text">Informe viagens do caminhão apenas nas etapas em que houver transporte de máquinas, como concretagem. O consumo é configurado na aba Configurações.</small>
-              </div>
-
-              <div class="field">
-                <label for="pedagioCaminhao">Pedágio por viagem do caminhão (R$)</label>
-                <input type="number" id="pedagioCaminhao" min="0" step="0.01" placeholder="0,00" />
-              </div>
-
-              <div class="field">
-                <label for="viagensCaminhao">Quantidade de viagens do caminhão</label>
-                <input type="number" id="viagensCaminhao" min="0" step="1" value="0" />
-              </div>
-
-              <div class="field">
-                <label for="quantidadeCaminhoes">Quantidade de caminhões</label>
-                <input type="number" id="quantidadeCaminhoes" min="0" step="1" value="0" />
+              <div id="deslocamentoVeiculosSection" class="field full">
+                <label>Veículos e viagens</label>
+                <input type="hidden" id="deslocamentoVeiculosItems" />
+                <div id="deslocamentoVeiculosList" class="equipamentos-lista"></div>
+                <button type="button" id="btnAdicionarDeslocamentoVeiculo" class="btn btn-secondary btn-inline">Adicionar veículo</button>
               </div>
 
               <div class="field">
@@ -1097,7 +1044,7 @@
 
           <section class="card">
             <h2>Combustível e deslocamento</h2>
-            <p class="help-text">Configure os consumos padrão de combustível para cada tipo de veículo. Esses valores são usados automaticamente no cálculo das propostas.</p>
+            <p class="help-text">Configure os consumos padrão de combustível para cada tipo de veículo e o preço por litro. Esses valores são usados automaticamente no cálculo das propostas.</p>
             <form id="configCombustivelForm" class="grid">
               <div class="field">
                 <label for="configConsumoPasseio">Consumo do veículo de passeio (km/l)</label>
@@ -1110,6 +1057,10 @@
               <div class="field">
                 <label for="configConsumoCaminhao">Consumo do caminhão (km/l)</label>
                 <input type="number" id="configConsumoCaminhao" min="0" step="0.01" placeholder="0,00" />
+              </div>
+              <div class="field">
+                <label for="configPrecoCombustivel">Preço do combustível (R$/l)</label>
+                <input type="number" id="configPrecoCombustivel" min="0" step="0.01" placeholder="0,00" />
               </div>
               <div class="field full">
                 <div class="acoes">

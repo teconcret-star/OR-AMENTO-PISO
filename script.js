@@ -100,6 +100,14 @@ const EQUIPAMENTOS_ALUGADOS_OPCOES = [
   { value: "nivel_laser", label: "Nível laser" },
   { value: "regua_vibratoria", label: "Régua vibratória" }
 ];
+const DESLOCAMENTO_VEICULO_OPCOES = [
+  { value: "passeio", label: "Carro de passeio" },
+  { value: "van", label: "Van" },
+  { value: "caminhao", label: "Caminhão" }
+];
+const DEFAULT_DESLOCAMENTO_VEICULOS_ITEMS = [
+  { tipo: "passeio", viagens: 1, quantidade: 1, pedagio: 0 }
+];
 const MACHINE_DATABASE_FIELD_IDS = [
   "paramRendimentoFacas",
   "paramFacasPorJogo",
@@ -115,6 +123,7 @@ const GLOBAL_CONFIG_FORM_FIELD_IDS = [
   "configConsumoPasseio",
   "configConsumoVan",
   "configConsumoCaminhao",
+  "configPrecoCombustivel",
   "configValorDia",
   "configValorDiarista"
 ];
@@ -138,6 +147,7 @@ const DEFAULT_GLOBAL_CONFIG = {
   consumoVeiculoPasseio: 0,
   consumoVan: 0,
   consumoCaminhao: 0,
+  precoCombustivel: 0,
   valorDiaFuncionario: 0,
   valorDiarista: 0
 };
@@ -1800,6 +1810,153 @@ function atualizarCampoEquipamentosAlugados({ preserveValuesWhenHidden = true, s
   }
 }
 
+function sanitizeDeslocamentoVeiculoTipo(value) {
+  return DESLOCAMENTO_VEICULO_OPCOES.some((item) => item.value === value)
+    ? value
+    : DESLOCAMENTO_VEICULO_OPCOES[0].value;
+}
+
+function parseDeslocamentoVeiculosItems(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) => ({
+      tipo: sanitizeDeslocamentoVeiculoTipo(item?.tipo),
+      viagens: Math.max(0, toPositiveIntegerOrFallback(item?.viagens, 0)),
+      quantidade: Math.max(0, toPositiveIntegerOrFallback(item?.quantidade, 0)),
+      pedagio: Math.max(0, toNumber(item?.pedagio))
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function getDeslocamentoVeiculosItemsSnapshot() {
+  return parseDeslocamentoVeiculosItems($("deslocamentoVeiculosItems")?.value);
+}
+
+function setDeslocamentoVeiculosItemsSnapshot(items) {
+  if (!$("deslocamentoVeiculosItems")) return;
+  $("deslocamentoVeiculosItems").value = JSON.stringify(
+    (items || []).map((item) => ({
+      tipo: sanitizeDeslocamentoVeiculoTipo(item?.tipo),
+      viagens: Math.max(0, toPositiveIntegerOrFallback(item?.viagens, 0)),
+      quantidade: Math.max(0, toPositiveIntegerOrFallback(item?.quantidade, 0)),
+      pedagio: Math.max(0, toNumber(item?.pedagio))
+    }))
+  );
+}
+
+function buildDeslocamentoVeiculoOptions(selectedValue) {
+  return DESLOCAMENTO_VEICULO_OPCOES
+    .map((item) => `<option value="${escapeHtml(item.value)}"${item.value === selectedValue ? " selected" : ""}>${escapeHtml(item.label)}</option>`)
+    .join("");
+}
+
+function createDeslocamentoVeiculoItem(item = {}) {
+  const tipo = sanitizeDeslocamentoVeiculoTipo(item.tipo);
+  const viagens = Math.max(0, toPositiveIntegerOrFallback(item.viagens, 0));
+  const quantidade = Math.max(0, toPositiveIntegerOrFallback(item.quantidade, 0));
+  const pedagio = Math.max(0, toNumber(item.pedagio));
+  const idSuffix = createUniqueId().replaceAll("-", "");
+  const tipoId = `deslocamentoVeiculoTipo_${idSuffix}`;
+  const viagensId = `deslocamentoVeiculoViagens_${idSuffix}`;
+  const quantidadeId = `deslocamentoVeiculoQuantidade_${idSuffix}`;
+  const pedagioId = `deslocamentoVeiculoPedagio_${idSuffix}`;
+  const row = document.createElement("div");
+  row.className = "equipamento-item deslocamento-veiculo-item";
+  row.innerHTML = `
+    <div class="field">
+      <label for="${tipoId}">Tipo de veículo</label>
+      <select id="${tipoId}" class="deslocamento-veiculo-tipo">
+        ${buildDeslocamentoVeiculoOptions(tipo)}
+      </select>
+    </div>
+    <div class="field">
+      <label for="${viagensId}">Quantidade de viagens</label>
+      <input id="${viagensId}" type="number" class="deslocamento-veiculo-viagens" min="0" step="1" value="${viagens}" />
+    </div>
+    <div class="field">
+      <label for="${quantidadeId}">Quantidade de veículos</label>
+      <input id="${quantidadeId}" type="number" class="deslocamento-veiculo-quantidade" min="0" step="1" value="${quantidade}" />
+    </div>
+    <div class="field">
+      <label for="${pedagioId}">Pedágio por viagem (R$)</label>
+      <input id="${pedagioId}" type="number" class="deslocamento-veiculo-pedagio" min="0" step="0.01" value="${pedagio > 0 ? pedagio : ""}" placeholder="0,00" />
+    </div>
+    <button type="button" class="btn btn-danger btn-inline" data-action="excluir-deslocamento-veiculo" aria-label="Excluir item de veículo">Excluir</button>
+  `;
+  return row;
+}
+
+function readDeslocamentoVeiculosFromUI() {
+  const rows = Array.from(document.querySelectorAll("#deslocamentoVeiculosList .deslocamento-veiculo-item"));
+  return rows.map((row) => ({
+    tipo: sanitizeDeslocamentoVeiculoTipo(row.querySelector(".deslocamento-veiculo-tipo")?.value),
+    viagens: Math.max(0, toPositiveIntegerOrFallback(row.querySelector(".deslocamento-veiculo-viagens")?.value, 0)),
+    quantidade: Math.max(0, toPositiveIntegerOrFallback(row.querySelector(".deslocamento-veiculo-quantidade")?.value, 0)),
+    pedagio: Math.max(0, toNumber(row.querySelector(".deslocamento-veiculo-pedagio")?.value))
+  }));
+}
+
+function renderDeslocamentoVeiculosItems(items = []) {
+  const list = $("deslocamentoVeiculosList");
+  if (!list) return;
+  const normalizedItems = (items && items.length ? items : DEFAULT_DESLOCAMENTO_VEICULOS_ITEMS).map((item) => ({
+    tipo: sanitizeDeslocamentoVeiculoTipo(item?.tipo),
+    viagens: Math.max(0, toPositiveIntegerOrFallback(item?.viagens, 0)),
+    quantidade: Math.max(0, toPositiveIntegerOrFallback(item?.quantidade, 0)),
+    pedagio: Math.max(0, toNumber(item?.pedagio))
+  }));
+  list.innerHTML = "";
+  normalizedItems.forEach((item) => {
+    list.appendChild(createDeslocamentoVeiculoItem(item));
+  });
+  setDeslocamentoVeiculosItemsSnapshot(readDeslocamentoVeiculosFromUI());
+}
+
+function buildDeslocamentoVeiculosFromLegacySnapshot(snapshot = {}) {
+  const passeioViagens = Math.max(0, toPositiveIntegerOrFallback(snapshot.viagens, 1));
+  const passeioQuantidade = Math.max(0, toPositiveIntegerOrFallback(snapshot.quantidadeVeiculos, 1));
+  const passeioPedagio = Math.max(0, toNumber(snapshot.pedagio));
+  const vanViagens = Math.max(0, toPositiveIntegerOrFallback(snapshot.viagensVan, 0));
+  const vanQuantidade = Math.max(0, toPositiveIntegerOrFallback(snapshot.quantidadeVans, 0));
+  const vanPedagio = Math.max(0, toNumber(snapshot.pedagioVan));
+  const caminhaoViagens = Math.max(0, toPositiveIntegerOrFallback(snapshot.viagensCaminhao, 0));
+  const caminhaoQuantidade = Math.max(0, toPositiveIntegerOrFallback(snapshot.quantidadeCaminhoes, 0));
+  const caminhaoPedagio = Math.max(0, toNumber(snapshot.pedagioCaminhao));
+  const items = [
+    { tipo: "passeio", viagens: passeioViagens, quantidade: passeioQuantidade, pedagio: passeioPedagio }
+  ];
+  if (vanViagens > 0 || vanQuantidade > 0 || vanPedagio > 0) {
+    items.push({ tipo: "van", viagens: vanViagens, quantidade: vanQuantidade, pedagio: vanPedagio });
+  }
+  if (caminhaoViagens > 0 || caminhaoQuantidade > 0 || caminhaoPedagio > 0) {
+    items.push({ tipo: "caminhao", viagens: caminhaoViagens, quantidade: caminhaoQuantidade, pedagio: caminhaoPedagio });
+  }
+  return items;
+}
+
+function atualizarCampoDeslocamentoVeiculos({ syncFromSnapshot = false, snapshot = null } = {}) {
+  const section = $("deslocamentoVeiculosSection");
+  const list = $("deslocamentoVeiculosList");
+  if (!section || !list) return;
+  section.hidden = false;
+  if (!syncFromSnapshot && list.children.length) return;
+  const snapshotItems = snapshot?.deslocamentoVeiculosItems
+    ? parseDeslocamentoVeiculosItems(snapshot.deslocamentoVeiculosItems)
+    : getDeslocamentoVeiculosItemsSnapshot();
+  const items = snapshotItems.length ? snapshotItems : buildDeslocamentoVeiculosFromLegacySnapshot(snapshot || {});
+  renderDeslocamentoVeiculosItems(items);
+}
+
+function getConsumoVeiculoPorTipo(tipo, cfg) {
+  if (tipo === "van") return cfg.consumoVan;
+  if (tipo === "caminhao") return cfg.consumoCaminhao;
+  return cfg.consumoVeiculoPasseio;
+}
+
 async function buscarDadosCep(cep) {
   const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
   if (!response.ok) throw new Error("Falha ao consultar CEP.");
@@ -1929,6 +2086,7 @@ function normalizeGlobalConfig(data = {}) {
     consumoVeiculoPasseio: Math.max(0, toNumber(data.consumoVeiculoPasseio)),
     consumoVan: Math.max(0, toNumber(data.consumoVan)),
     consumoCaminhao: Math.max(0, toNumber(data.consumoCaminhao)),
+    precoCombustivel: Math.max(0, toNumber(data.precoCombustivel)),
     valorDiaFuncionario: Math.max(0, toNumber(data.valorDiaFuncionario)),
     valorDiarista: Math.max(0, toNumber(data.valorDiarista))
   };
@@ -1951,6 +2109,7 @@ function applyGlobalConfigToForm() {
   if ($("configConsumoPasseio")) $("configConsumoPasseio").value = cfg.consumoVeiculoPasseio > 0 ? String(cfg.consumoVeiculoPasseio) : "";
   if ($("configConsumoVan")) $("configConsumoVan").value = cfg.consumoVan > 0 ? String(cfg.consumoVan) : "";
   if ($("configConsumoCaminhao")) $("configConsumoCaminhao").value = cfg.consumoCaminhao > 0 ? String(cfg.consumoCaminhao) : "";
+  if ($("configPrecoCombustivel")) $("configPrecoCombustivel").value = cfg.precoCombustivel > 0 ? String(cfg.precoCombustivel) : "";
   if ($("configValorDia")) $("configValorDia").value = cfg.valorDiaFuncionario > 0 ? String(cfg.valorDiaFuncionario) : "";
   if ($("configValorDiarista")) $("configValorDiarista").value = cfg.valorDiarista > 0 ? String(cfg.valorDiarista) : "";
 }
@@ -1959,7 +2118,8 @@ function readGlobalConfigCombustivelFromForm() {
   return {
     consumoVeiculoPasseio: toNumber($("configConsumoPasseio")?.value),
     consumoVan: toNumber($("configConsumoVan")?.value),
-    consumoCaminhao: toNumber($("configConsumoCaminhao")?.value)
+    consumoCaminhao: toNumber($("configConsumoCaminhao")?.value),
+    precoCombustivel: toNumber($("configPrecoCombustivel")?.value)
   };
 }
 
@@ -2631,16 +2791,7 @@ function proposalFieldsSnapshot() {
     "endereco",
     "metragem",
     "distancia",
-    "precoCombustivel",
-    "pedagio",
-    "viagens",
-    "quantidadeVeiculos",
-    "viagensVan",
-    "quantidadeVans",
-    "pedagioVan",
-    "pedagioCaminhao",
-    "viagensCaminhao",
-    "quantidadeCaminhoes",
+    "deslocamentoVeiculosItems",
     "gastoLogisticoPessoal",
     "gastoLogisticoMaquinario",
     "modoFuncionarios",
@@ -2713,6 +2864,7 @@ function applyProposalSnapshot(snapshot = {}) {
     if ($(id) && !MACHINE_DATABASE_FIELD_IDS.includes(id) && !GLOBAL_CONFIG_FORM_FIELD_IDS.includes(id)) $(id).value = snapshot[id];
   });
   populateProposalClientSelect();
+  atualizarCampoDeslocamentoVeiculos({ syncFromSnapshot: true, snapshot });
   atualizarModoFuncionarios();
   atualizarCampoPisoTela({ preserveValueWhenDisabled: true });
   atualizarCampoCuraQuimica({ preserveValueWhenDisabled: true });
@@ -3523,20 +3675,9 @@ function calcularOrcamento() {
   const metragem = toNumber($("metragem").value);
   const distancia = toNumber($("distancia").value);
   const globalCfg = getGlobalConfig();
-  const consumo = globalCfg.consumoVeiculoPasseio;
-  const precoCombustivel = toNumber($("precoCombustivel").value);
-  const pedagio = toNumber($("pedagio").value);
-  const viagens = toNumber($("viagens").value);
-  const quantidadeVeiculosDigitada = parseInt($("quantidadeVeiculos").value, 10);
-  const quantidadeVeiculos = quantidadeVeiculosDigitada > 0 ? quantidadeVeiculosDigitada : 1;
-  const consumoVan = globalCfg.consumoVan;
-  const viagensVan = toNumber($("viagensVan").value);
-  const quantidadeVans = toPositiveIntegerOrFallback($("quantidadeVans").value, 0);
-  const pedagioVan = toNumber($("pedagioVan").value);
-  const consumoCaminhao = globalCfg.consumoCaminhao;
-  const pedagioCaminhao = toNumber($("pedagioCaminhao").value);
-  const viagensCaminhao = toNumber($("viagensCaminhao").value);
-  const quantidadeCaminhoes = toPositiveIntegerOrFallback($("quantidadeCaminhoes").value, 0);
+  const precoCombustivel = globalCfg.precoCombustivel;
+  const deslocamentoVeiculos = readDeslocamentoVeiculosFromUI();
+  setDeslocamentoVeiculosItemsSnapshot(deslocamentoVeiculos);
   const gastoLogisticoPessoal = toNumber($("gastoLogisticoPessoal").value);
   const gastoLogisticoMaquinario = toNumber($("gastoLogisticoMaquinario").value);
   const valorDia = toNumber($("valorDia").value);
@@ -3593,28 +3734,26 @@ function calcularOrcamento() {
   const impostoPercentual = toNumber($("impostoPercentual").value);
   const machineDb = getMachineDatabase();
 
-  const multiplicadorViagens = viagens > 0 ? viagens : 1;
-  const distanciaTotal = distancia * multiplicadorViagens;
-  const custoCombustivel = consumo > 0 ? ((distanciaTotal / consumo) * precoCombustivel) * quantidadeVeiculos : 0;
-  const custoPedagio = pedagio * multiplicadorViagens * quantidadeVeiculos;
-  const multiplicadorViagensCaminhao = viagensCaminhao;
-  const distanciaTotalCaminhao = distancia * multiplicadorViagensCaminhao;
-  const custoCombustivelCaminhao = consumoCaminhao > 0
-    ? ((distanciaTotalCaminhao / consumoCaminhao) * precoCombustivel) * quantidadeCaminhoes
-    : 0;
-  const custoPedagioCaminhao = pedagioCaminhao * multiplicadorViagensCaminhao * quantidadeCaminhoes;
-  const distanciaTotalVan = distancia * viagensVan;
-  const custoCombustivelVan = consumoVan > 0 && quantidadeVans > 0
-    ? ((distanciaTotalVan / consumoVan) * precoCombustivel) * quantidadeVans
-    : 0;
-  const custoPedagioVan = quantidadeVans > 0 ? pedagioVan * viagensVan * quantidadeVans : 0;
+  const custosDeslocamento = deslocamentoVeiculos.reduce((acc, item) => {
+    const viagens = Math.max(0, toPositiveIntegerOrFallback(item.viagens, 0));
+    const quantidade = Math.max(0, toPositiveIntegerOrFallback(item.quantidade, 0));
+    const pedagio = Math.max(0, toNumber(item.pedagio));
+    const distanciaTotal = distancia * viagens;
+    const consumo = getConsumoVeiculoPorTipo(item.tipo, globalCfg);
+    const combustivel = consumo > 0 && quantidade > 0
+      ? ((distanciaTotal / consumo) * precoCombustivel) * quantidade
+      : 0;
+    const pedagioTotal = quantidade > 0 ? pedagio * viagens * quantidade : 0;
+    return {
+      combustivel: acc.combustivel + combustivel,
+      pedagio: acc.pedagio + pedagioTotal
+    };
+  }, { combustivel: 0, pedagio: 0 });
+  const custoCombustivel = custosDeslocamento.combustivel;
+  const custoPedagio = custosDeslocamento.pedagio;
   const custoDeslocamento =
     custoCombustivel
     + custoPedagio
-    + custoCombustivelVan
-    + custoPedagioVan
-    + custoCombustivelCaminhao
-    + custoPedagioCaminhao
     + gastoLogisticoPessoal
     + gastoLogisticoMaquinario;
   const atividadePersonDays =
@@ -3699,8 +3838,8 @@ function calcularOrcamento() {
   $("prevLocalData").textContent = [$("propostaCidade").value.trim(), formatDate()].filter(Boolean).join(", ");
   $("prevNumeroProposta").textContent = `Proposta Nº ${$("propostaNumero").value.trim() || "-"}`;
 
-  $("resCombustivel").textContent = formatMoney(custoCombustivel + custoCombustivelVan);
-  $("resPedagio").textContent = formatMoney(custoPedagio + custoPedagioVan);
+  $("resCombustivel").textContent = formatMoney(custoCombustivel);
+  $("resPedagio").textContent = formatMoney(custoPedagio);
   $("resDeslocamento").textContent = formatMoney(custoDeslocamento);
   $("resMaoDeObra").textContent = formatMoney(custoMaoDeObra);
   $("resFuncionarios").textContent = `Preparação ${funcionariosPreparacao} + Concretagem ${funcionariosConcretagem} + Acabamento ${funcionariosAcabamento} = ${formatNumber(funcionarioDias)} ${pluralize(funcionarioDias, "funcionário-dia", "funcionários-dia")}`;
@@ -4052,16 +4191,7 @@ function limparCampos() {
     "endereco",
     "metragem",
     "distancia",
-    "precoCombustivel",
-    "pedagio",
-    "viagens",
-    "quantidadeVeiculos",
-    "viagensVan",
-    "quantidadeVans",
-    "pedagioVan",
-    "pedagioCaminhao",
-    "viagensCaminhao",
-    "quantidadeCaminhoes",
+    "deslocamentoVeiculosItems",
     "gastoLogisticoPessoal",
     "gastoLogisticoMaquinario",
     "modoFuncionarios",
@@ -4124,12 +4254,6 @@ function limparCampos() {
     $(id).value = "";
   });
 
-  $("viagens").value = 1;
-  $("quantidadeVeiculos").value = 1;
-  $("viagensVan").value = 0;
-  $("quantidadeVans").value = 0;
-  $("viagensCaminhao").value = 0;
-  $("quantidadeCaminhoes").value = 0;
   $("modoFuncionarios").value = WORKER_MODE_MANUAL;
   $("pisoTela").value = "sem_tela";
   $("curaQuimica").value = "sem_cura";
@@ -4143,6 +4267,7 @@ function limparCampos() {
   atualizarCampoPisoTela({ preserveValueWhenDisabled: false });
   atualizarCampoCuraQuimica({ preserveValueWhenDisabled: false });
   atualizarCampoEquipamentosAlugados({ preserveValuesWhenHidden: false, syncFromSnapshot: true });
+  atualizarCampoDeslocamentoVeiculos({ syncFromSnapshot: true });
   atualizarCampoStatusProposta({ preserveValueWhenHidden: false });
   atualizarTextoBotaoProposta();
   if (currentUserId) {
@@ -5138,6 +5263,35 @@ function bindStaticEvents() {
     salvarRascunhoLocal();
   });
 
+  $("btnAdicionarDeslocamentoVeiculo").addEventListener("click", () => {
+    const list = $("deslocamentoVeiculosList");
+    const row = createDeslocamentoVeiculoItem();
+    list.appendChild(row);
+    row.querySelector(".deslocamento-veiculo-tipo")?.focus();
+    calcularOrcamento();
+    salvarRascunhoLocal();
+  });
+
+  $("deslocamentoVeiculosList").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-action='excluir-deslocamento-veiculo']");
+    if (!button) return;
+    const row = button.closest(".deslocamento-veiculo-item");
+    if (!row) return;
+    row.remove();
+    if (!$("deslocamentoVeiculosList").children.length) {
+      renderDeslocamentoVeiculosItems(DEFAULT_DESLOCAMENTO_VEICULOS_ITEMS);
+    }
+    calcularOrcamento();
+    salvarRascunhoLocal();
+  });
+
+  ["input", "change"].forEach((eventName) => {
+    $("deslocamentoVeiculosList").addEventListener(eventName, () => {
+      calcularOrcamento();
+      salvarRascunhoLocal();
+    });
+  });
+
   $("btnAdicionarEquipamentoAlugado").addEventListener("click", () => {
     const list = $("equipamentosAlugadosList");
     const row = createEquipamentoAlugadoItem();
@@ -5195,16 +5349,6 @@ function bindStaticEvents() {
     "cep",
     "endereco",
     "distancia",
-    "precoCombustivel",
-    "pedagio",
-    "quantidadeVeiculos",
-    "viagens",
-    "pedagioVan",
-    "viagensVan",
-    "quantidadeVans",
-    "pedagioCaminhao",
-    "viagensCaminhao",
-    "quantidadeCaminhoes",
     "gastoLogisticoPessoal",
     "gastoLogisticoMaquinario",
     "valorDia",
@@ -5355,6 +5499,7 @@ async function init() {
     atualizarCampoPisoTela({ preserveValueWhenDisabled: false });
     atualizarCampoCuraQuimica({ preserveValueWhenDisabled: false });
     atualizarCampoEquipamentosAlugados({ preserveValuesWhenHidden: true, syncFromSnapshot: true });
+    atualizarCampoDeslocamentoVeiculos({ syncFromSnapshot: true });
     atualizarCampoStatusProposta({ preserveValueWhenHidden: false });
     preencherPropostaComConfiguracoes();
     if (!$("propostaTextoPadrao").value.trim()) {

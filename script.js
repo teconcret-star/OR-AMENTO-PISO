@@ -2144,6 +2144,8 @@ function preencherPropostaComConfiguracoes() {
   const cfg = getGlobalConfig();
   if ($("valorDia") && !$("valorDia").value) $("valorDia").value = cfg.valorDiaFuncionario > 0 ? String(cfg.valorDiaFuncionario) : "";
   if ($("valorDiarista") && !$("valorDiarista").value) $("valorDiarista").value = cfg.valorDiarista > 0 ? String(cfg.valorDiarista) : "";
+  // valorHoraExtra and alimentacaoFuncionario are readonly in the proposal form — always overwrite
+  // with the current config value so they stay in sync whenever config changes.
   if ($("valorHoraExtra")) $("valorHoraExtra").value = cfg.valorHoraExtra > 0 ? String(cfg.valorHoraExtra) : "";
   if ($("alimentacaoFuncionario")) $("alimentacaoFuncionario").value = cfg.alimentacaoFuncionario > 0 ? String(cfg.alimentacaoFuncionario) : "";
 }

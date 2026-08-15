@@ -1643,15 +1643,11 @@ function formatNumberInputValue(value) {
 }
 
 function getCronogramaDiasTotal() {
-  return toNumber($("diasPreparacao").value)
-    + toNumber($("diasConcretagem").value)
-    + toNumber($("diasAcabamento").value);
+  return toNumber($("diasExecucao").value);
 }
 
 function getCronogramaFuncionariosTotal() {
-  return toPositiveIntegerOrFallback($("funcionariosPreparacao").value, 0)
-    + toPositiveIntegerOrFallback($("funcionariosConcretagem").value, 0)
-    + toPositiveIntegerOrFallback($("funcionariosAcabamento").value, 0);
+  return toPositiveIntegerOrFallback($("numeroFuncionarios").value, 0);
 }
 
 function atualizarModoFuncionarios() {
@@ -1662,9 +1658,9 @@ function atualizarModoFuncionarios() {
   diasEl.readOnly = true;
   funcionariosEl.value = formatNumberInputValue(getCronogramaFuncionariosTotal());
   diasEl.value = formatNumberInputValue(getCronogramaDiasTotal());
-  $("infoFuncionarios").textContent = "Calculado automaticamente pela soma dos campos de funcionários do cronograma de atividades.";
+  $("infoFuncionarios").textContent = "Calculado automaticamente a partir do campo de número de funcionários do cronograma de atividades.";
   if ($("infoDias")) {
-    $("infoDias").textContent = "Calculado automaticamente pela soma dos dias informados no cronograma de atividades.";
+    $("infoDias").textContent = "Calculado automaticamente a partir dos dias de execução informados no cronograma de atividades.";
   }
 }
 
@@ -2812,12 +2808,8 @@ function proposalFieldsSnapshot() {
     "funcionarios",
     "valorDia",
     "dias",
-    "diasPreparacao",
-    "funcionariosPreparacao",
-    "diasConcretagem",
-    "funcionariosConcretagem",
-    "diasAcabamento",
-    "funcionariosAcabamento",
+    "diasExecucao",
+    "numeroFuncionarios",
     "quantidadeDiaristas",
     "valorDiarista",
     "quantidadeHorasExtras",
@@ -3697,12 +3689,8 @@ function calcularOrcamento() {
   const gastoLogisticoPessoal = toNumber($("gastoLogisticoPessoal").value);
   const gastoLogisticoMaquinario = toNumber($("gastoLogisticoMaquinario").value);
   const valorDia = toNumber($("valorDia").value);
-  const diasPreparacao = toNumber($("diasPreparacao").value);
-  const funcionariosPreparacao = toPositiveIntegerOrFallback($("funcionariosPreparacao").value, 0);
-  const diasConcretagem = toNumber($("diasConcretagem").value);
-  const funcionariosConcretagem = toPositiveIntegerOrFallback($("funcionariosConcretagem").value, 0);
-  const diasAcabamento = toNumber($("diasAcabamento").value);
-  const funcionariosAcabamento = toPositiveIntegerOrFallback($("funcionariosAcabamento").value, 0);
+  const diasExecucao = toNumber($("diasExecucao").value);
+  const numeroFuncionarios = toPositiveIntegerOrFallback($("numeroFuncionarios").value, 0);
   const quantidadeDiaristas = toPositiveIntegerOrFallback($("quantidadeDiaristas").value, 0);
   const valorDiarista = toNumber($("valorDiarista").value);
   const quantidadeHorasExtras = toNumber($("quantidadeHorasExtras").value);
@@ -3772,10 +3760,7 @@ function calcularOrcamento() {
     + custoPedagio
     + gastoLogisticoPessoal
     + gastoLogisticoMaquinario;
-  const atividadePersonDays =
-    (funcionariosPreparacao * diasPreparacao)
-    + (funcionariosConcretagem * diasConcretagem)
-    + (funcionariosAcabamento * diasAcabamento);
+  const atividadePersonDays = numeroFuncionarios * diasExecucao;
   const funcionarioDias = atividadePersonDays;
   const diaristaDias = quantidadeDiaristas * dias;
   const totalPessoaDias = funcionarioDias + diaristaDias;
@@ -3858,7 +3843,7 @@ function calcularOrcamento() {
   $("resPedagio").textContent = formatMoney(custoPedagio);
   $("resDeslocamento").textContent = formatMoney(custoDeslocamento);
   $("resMaoDeObra").textContent = formatMoney(custoMaoDeObra);
-  $("resFuncionarios").textContent = `Preparação ${funcionariosPreparacao} + Concretagem ${funcionariosConcretagem} + Acabamento ${funcionariosAcabamento} = ${formatNumber(funcionarioDias)} ${pluralize(funcionarioDias, "funcionário-dia", "funcionários-dia")}`;
+  $("resFuncionarios").textContent = `${formatNumber(numeroFuncionarios)} ${pluralize(numeroFuncionarios, "funcionário", "funcionários")} × ${formatNumber(diasExecucao)} ${pluralize(diasExecucao, "dia", "dias")} = ${formatNumber(funcionarioDias)} ${pluralize(funcionarioDias, "funcionário-dia", "funcionários-dia")}`;
   $("resAlimentacao").textContent = formatMoney(custoAlimentacao);
   $("resHotel").textContent = formatMoney(custoHotel);
   $("resFacasQtd").textContent = formatConsumableSetsAndItems(jogosFacasEstimados, facasEstimadas, "faca", "facas");
@@ -4214,12 +4199,8 @@ function limparCampos() {
     "funcionarios",
     "valorDia",
     "dias",
-    "diasPreparacao",
-    "funcionariosPreparacao",
-    "diasConcretagem",
-    "funcionariosConcretagem",
-    "diasAcabamento",
-    "funcionariosAcabamento",
+    "diasExecucao",
+    "numeroFuncionarios",
     "quantidadeDiaristas",
     "valorDiarista",
     "quantidadeHorasExtras",
@@ -5338,12 +5319,8 @@ function bindStaticEvents() {
   });
 
   [
-    "diasPreparacao",
-    "funcionariosPreparacao",
-    "diasConcretagem",
-    "funcionariosConcretagem",
-    "diasAcabamento",
-    "funcionariosAcabamento"
+    "diasExecucao",
+    "numeroFuncionarios"
   ].forEach((id) => {
     ["input", "change"].forEach((eventName) => {
       $(id).addEventListener(eventName, atualizarModoFuncionarios);
@@ -5365,12 +5342,8 @@ function bindStaticEvents() {
     "gastoLogisticoMaquinario",
     "valorDia",
     "dias",
-    "diasPreparacao",
-    "funcionariosPreparacao",
-    "diasConcretagem",
-    "funcionariosConcretagem",
-    "diasAcabamento",
-    "funcionariosAcabamento",
+    "diasExecucao",
+    "numeroFuncionarios",
     "quantidadeDiaristas",
     "valorDiarista",
     "quantidadeHorasExtras",

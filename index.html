@@ -290,19 +290,12 @@
 
           <section class="card">
             <h2>Mão de obra</h2>
+            <input type="hidden" id="modoFuncionarios" value="manual" />
 
             <div class="grid">
               <div class="field">
-                <label for="modoFuncionarios">Modo de cálculo da equipe</label>
-                <select id="modoFuncionarios" aria-describedby="infoFuncionarios">
-                  <option value="auto">Automático</option>
-                  <option value="manual">Manual</option>
-                </select>
-              </div>
-
-              <div class="field">
                 <label for="funcionarios">Funcionários necessários</label>
-                <small id="infoFuncionarios" class="help-text">Regra automática: 1 funcionário a cada 100 m²</small>
+                <small id="infoFuncionarios" class="help-text">Calculado automaticamente pela soma dos campos de funcionários do cronograma de atividades.</small>
                 <input type="number" id="funcionarios" min="0" step="1" readonly aria-describedby="infoFuncionarios" />
               </div>
 
@@ -313,12 +306,13 @@
 
               <div class="field">
                 <label for="dias">Quantidade de dias</label>
-                <input type="number" id="dias" min="0" step="1" placeholder="0" />
+                <small id="infoDias" class="help-text">Calculado automaticamente pela soma dos dias informados no cronograma de atividades.</small>
+                <input type="number" id="dias" min="0" step="0.5" placeholder="0" readonly aria-describedby="infoDias" />
               </div>
 
               <div class="field full">
                 <h3>Cronograma e equipe por atividade</h3>
-                <small class="help-text">Preencha para flexibilizar a equipe por etapa; se ficar vazio, o sistema mantém a regra geral de funcionários x dias.</small>
+                <small class="help-text">Preencha os dias e a equipe de cada etapa para compor automaticamente os totais e os custos de mão de obra.</small>
               </div>
 
               <div class="field">
@@ -400,6 +394,11 @@
                 </select>
               </div>
 
+              <div class="field full">
+                <h3>Atividades e materiais de valor agregado</h3>
+                <small class="help-text">Informe custos complementares totais ou por m² quando aplicável.</small>
+              </div>
+
               <div class="field">
                 <label for="terraplanagemTotal">Terraplanagem (valor total R$)</label>
                 <input type="number" id="terraplanagemTotal" min="0" step="0.01" placeholder="0,00" />
@@ -433,11 +432,6 @@
                 <label for="valorCuraM2">Valor da cura química por m² (R$)</label>
                 <input type="number" id="valorCuraM2" min="0" step="0.01" placeholder="0,00" disabled />
                 <small id="infoCuraQuimica" class="help-text">Disponível apenas quando a cura química for selecionada.</small>
-              </div>
-
-              <div class="field full">
-                <h3>Atividades e materiais de valor agregado</h3>
-                <small class="help-text">Informe valores por m² para mão de obra e materiais/fornecimento quando aplicável.</small>
               </div>
 
               <div class="field">
@@ -505,15 +499,13 @@
                 <input type="text" id="servicoAdicionalDescricao" placeholder="Ex.: Nivelamento e polimento, piso sarrafeado, colocação de malha" />
               </div>
 
-              <div class="field">
-                <label for="equipamentosTipo">Equipamentos próprios ou alugados?</label>
-                <select id="equipamentosTipo">
-                  <option value="proprios">Próprios</option>
-                  <option value="alugados">Alugados</option>
-                </select>
+              <input type="hidden" id="equipamentosTipo" value="alugados" />
+              <div class="field full">
+                <h3>Equipamentos alugados</h3>
+                <small class="help-text">Preencha apenas quando houver locação; se não houver, deixe os campos abaixo em branco.</small>
               </div>
 
-              <div id="equipamentosAlugadosSection" class="field full" hidden>
+              <div id="equipamentosAlugadosSection" class="field full">
                 <label>Equipamentos alugados (diária)</label>
                 <input type="hidden" id="equipamentosAlugadosItems" />
                 <div id="equipamentosAlugadosList" class="equipamentos-lista"></div>
@@ -757,8 +749,8 @@
                   </div>
 
                   <div class="resultado-item">
-                    <span>Funcionários considerados</span>
-                    <small class="help-text">No cronograma por atividade, mostra o pico de equipe e o total de funcionários-dia.</small>
+                    <span>Soma de funcionários do cronograma</span>
+                    <small class="help-text">Mostra os funcionários informados em cada etapa e o total correspondente de funcionários-dia.</small>
                     <strong id="resFuncionarios">0</strong>
                   </div>
 
